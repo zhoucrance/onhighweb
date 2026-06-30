@@ -13,7 +13,34 @@ import AdminBuses from "./pages/Admin/AdminBuses";
 import AdminUsers from "./pages/Admin/AdminUsers";
 import BookNow from "./pages/BookNow";
 import Bookings from "./pages/Bookings";
-import AdminBookings from "./pages/Admin/AdminBookings";
+import AdminBookingManagement from "./pages/Admin/AdminBookingManagement";
+import AdminRoutes from "./pages/Admin/AdminRoutes";
+import AdminTrips from "./pages/Admin/AdminTrips";
+import AdminSeatAvailability from "./pages/Admin/AdminSeatAvailability";
+import AdminServiceFees from "./pages/Admin/AdminServiceFees";
+import AccessDenied from "./pages/AccessDenied";
+import { hasPermission, isSuperAdmin } from "./helpers/permissions";
+
+function PermissionRoute({ children, permission, superAdminOnly = false }) {
+  const { user } = useSelector((state) => state.users);
+  if (superAdminOnly && !isSuperAdmin(user)) {
+    console.error("[PermissionRoute] Access denied", {
+      path: window.location.pathname,
+      reason: "super_admin_required",
+      user,
+    });
+    return <AccessDenied />;
+  }
+  if (permission && !hasPermission(user, permission)) {
+    console.error("[PermissionRoute] Access denied", {
+      path: window.location.pathname,
+      permission,
+      user,
+    });
+    return <AccessDenied />;
+  }
+  return children;
+}
 
 function App() {
   const { loading } = useSelector((state) => state.alerts);
@@ -48,6 +75,17 @@ function App() {
           />
 
           <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute>
+                <PermissionRoute permission="dashboard">
+                  <AdminHome />
+                </PermissionRoute>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/admin/buses"
             element={
               <ProtectedRoute>
@@ -57,10 +95,32 @@ function App() {
           />
 
           <Route
+            path="/admin/routes"
+            element={
+              <ProtectedRoute>
+                <AdminRoutes />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/trips"
+            element={
+              <ProtectedRoute>
+                <PermissionRoute permission="trips">
+                  <AdminTrips />
+                </PermissionRoute>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/admin/users"
             element={
               <ProtectedRoute>
-                <AdminUsers />
+                <PermissionRoute permission="users">
+                  <AdminUsers />
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />
@@ -68,7 +128,33 @@ function App() {
             path="/admin/bookings"
             element={
               <ProtectedRoute>
-                <AdminBookings />
+                <Bookings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/booking-management"
+            element={
+              <ProtectedRoute>
+                <AdminBookingManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/seat-availability"
+            element={
+              <ProtectedRoute>
+                <AdminSeatAvailability />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/service-fees"
+            element={
+              <ProtectedRoute>
+                <PermissionRoute superAdminOnly>
+                  <AdminServiceFees />
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />

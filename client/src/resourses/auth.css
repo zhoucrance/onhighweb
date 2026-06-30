@@ -1,3 +1,40 @@
 .auth{
+    align-items: center !important;
     background-color: var(--secondary);
+    display: flex !important;
+    justify-content: center !important;
+    padding: 16px;
+}
+
+.auth-card {
+    border: 1px solid rgba(255, 255, 255, 0.35) !important;
+    border-radius: 8px !important;
+    max-width: 100%;
+}
+
+.auth-card input {
+    border: 1px solid #d6dce8;
+    border-radius: 5px;
+    padding-left: 12px;
+}
+
+@media (max-width: 576px) {
+    .auth {
+        align-items: center !important;
+        padding-top: 36px;
+    }
+
+    .auth-card {
+        width: min(100%, 400px) !important;
+    }
+
+    .auth-card .d-flex.justify-content-between {
+        align-items: stretch !important;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .auth-card button {
+        width: 100%;
+    }
 }

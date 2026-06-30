@@ -1,0 +1,204 @@
+.service-fees-page {
+  color: #071a4d;
+  padding-bottom: 24px;
+}
+
+.service-fee-header {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 8px 0 16px;
+}
+
+.service-fee-header p {
+  color: #5f6d8a;
+  font-size: 13px;
+  margin-top: 4px !important;
+}
+
+.service-fee-header .primary-btn,
+.service-fee-save {
+  align-items: center;
+  display: inline-flex;
+  gap: 7px;
+  justify-content: center;
+}
+
+.service-fee-summary {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  margin-bottom: 16px;
+}
+
+.service-fee-summary div,
+.service-fee-panel {
+  background: #ffffff;
+  border: 1px solid #dde4ef;
+  border-radius: 8px;
+  box-shadow: 0 8px 22px rgba(7, 26, 77, 0.05);
+}
+
+.service-fee-summary div {
+  padding: 16px;
+}
+
+.service-fee-summary span,
+.service-fee-preview span,
+.service-fee-note span,
+.service-fee-bus span {
+  color: #63708b;
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.service-fee-summary strong {
+  color: var(--primary);
+  display: block;
+  font-size: 24px;
+  margin-top: 4px;
+}
+
+.service-fee-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(420px, 760px);
+}
+
+.service-fee-panel {
+  padding: 18px;
+}
+
+.service-fee-panel-title {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.service-fee-panel-title > i,
+.service-fee-note > i {
+  align-items: center;
+  background: rgba(172, 68, 37, 0.12);
+  border-radius: 50%;
+  color: var(--secondary);
+  display: flex;
+  font-size: 24px;
+  height: 48px;
+  justify-content: center;
+  min-width: 48px;
+  width: 48px;
+}
+
+.service-fee-panel h2,
+.service-fee-table-title h2 {
+  color: #071a4d;
+  font-size: 16px !important;
+  font-weight: 800;
+  margin-bottom: 4px !important;
+}
+
+.service-fee-panel p {
+  color: #65708a;
+  font-size: 12px;
+}
+
+.service-fee-inline {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.service-fee-panel .ant-select-selector,
+.service-fee-panel .ant-input-number,
+.service-fee-panel .ant-input-number-group-wrapper {
+  width: 100% !important;
+}
+
+.service-fee-panel .ant-select-selector,
+.service-fee-panel .ant-input-number,
+.service-fee-panel .ant-input-number-group-addon {
+  border-color: #dde4ef !important;
+}
+
+.service-fee-panel .ant-form-item-label > label {
+  color: #071a4d;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.service-fee-preview {
+  background: rgba(5, 131, 89, 0.08);
+  border: 1px solid rgba(5, 131, 89, 0.18);
+  border-radius: 8px;
+  margin-bottom: 14px;
+  padding: 14px;
+}
+
+.service-fee-preview strong {
+  color: var(--primary);
+  display: block;
+  font-size: 18px;
+  margin: 3px 0;
+}
+
+.service-fee-save {
+  border-radius: 6px !important;
+  width: 100%;
+}
+
+.service-fee-table-title {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.service-fee-table-title span {
+  background: rgba(5, 131, 89, 0.1);
+  border-radius: 999px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 5px 10px;
+}
+
+.service-fee-bus strong {
+  color: #071a4d;
+}
+
+.service-fee-status {
+  background: #eef1f6;
+  border-radius: 999px;
+  color: #63708b;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 5px 10px;
+}
+
+.service-fee-status.active {
+  background: rgba(5, 131, 89, 0.1);
+  color: var(--primary);
+}
+
+@media (max-width: 1000px) {
+  .service-fee-grid,
+  .service-fee-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .service-fee-header {
+    flex-direction: column;
+  }
+
+  .service-fee-grid,
+  .service-fee-summary,
+  .service-fee-inline {
+    grid-template-columns: 1fr;
+  }
+}

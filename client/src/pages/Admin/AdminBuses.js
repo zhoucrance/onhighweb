@@ -1,17 +1,50 @@
-import { message, Table } from "antd";
-import axios from "axios";
-import moment from "moment";
-import React, { useEffect, useState } from "react";
+import { message, Modal, Select } from "antd";
+import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import BusForm from "../../components/BusForm";
 import PageTitle from "../../components/PageTitle";
+import ResponsiveAntTable from "../../components/ResponsiveAntTable";
 import { axiosInstance } from "../../helpers/axiosInstance";
 import { HideLoading, ShowLoading } from "../../redux/alertsSlice";
+
+const busColorStyles = {
+  red: "#dc2626",
+  blue: "#2563eb",
+  green: "#16a34a",
+  yellow: "#facc15",
+  orange: "#f97316",
+  purple: "#7c3aed",
+  pink: "#ec4899",
+  cyan: "#06b6d4",
+  teal: "#0d9488",
+  lime: "#84cc16",
+  indigo: "#4f46e5",
+  violet: "#8b5cf6",
+  maroon: "#7f1d1d",
+  navy: "#1e3a8a",
+  olive: "#3f6212",
+  gold: "#d4a017",
+  silver: "#94a3b8",
+  bronze: "#b45309",
+  turquoise: "#14b8a6",
+  magenta: "#d946ef",
+  coral: "#fb7185",
+  brown: "#92400e",
+  black: "#111827",
+  white: "#ffffff",
+  skyblue: "#38bdf8",
+  mint: "#86efac",
+  lavender: "#c4b5fd",
+  crimson: "#be123c",
+  amber: "#f59e0b",
+  charcoal: "#374151",
+};
 
 function AdminBuses() {
   const dispatch = useDispatch();
   const [showBusForm, setShowBusForm] = useState(false);
   const [buses, setBuses] = useState([]);
+  const [busFilter, setBusFilter] = useState("");
   const [selectedBus, setSelectedBus] = useState(null);
   const getBuses = async () => {
     try {
@@ -58,12 +91,36 @@ function AdminBuses() {
       dataIndex: "number",
     },
     {
-      title: "From",
-      dataIndex: "from",
+      title: "Capacity",
+      dataIndex: "capacity",
     },
     {
-      title: "To",
-      dataIndex: "to",
+      title: "Type",
+      dataIndex: "type",
+    },
+    {
+      title: "Color",
+      dataIndex: "icon_color",
+      render: (color = "blue") => (
+        <span className="d-flex align-items-center gap-2">
+          <span
+            style={{
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              backgroundColor: busColorStyles[color] || busColorStyles.blue,
+              display: "inline-block",
+              border: "1px solid #d9dfeb",
+            }}
+          />
+          {color}
+        </span>
+      ),
+    },
+    {
+      title: "Route",
+      dataIndex: "route",
+      render: (route) => route ? `${route.routeName} (${route.fromCity} - ${route.toCity})` : "-",
     },
     {
       title: "Journey Date",
@@ -79,13 +136,20 @@ function AdminBuses() {
       render: (action, record) => (
         <div className="d-flex gap-3">
           <i
-            class="ri-delete-bin-line"
-            onClick={() => {
-              deleteBus(record._id);
-            }}
+            className="ri-delete-bin-line"
+            onClick={() =>
+              Modal.confirm({
+                title: "Delete bus?",
+                content: `This will delete ${record.name} (${record.number}).`,
+                okText: "Delete",
+                okType: "danger",
+                cancelText: "Cancel",
+                onOk: () => deleteBus(record._id),
+              })
+            }
           ></i>
           <i
-            class="ri-pencil-line"
+            className="ri-pencil-line"
             onClick={() => {
               setSelectedBus(record);
               setShowBusForm(true);
@@ -95,6 +159,11 @@ function AdminBuses() {
       ),
     },
   ];
+
+  const filteredBuses = useMemo(() => {
+    if (!busFilter) return buses;
+    return buses.filter((bus) => bus._id === busFilter);
+  }, [busFilter, buses]);
 
   useEffect(() => {
     getBuses();
@@ -108,7 +177,28 @@ function AdminBuses() {
         </button>
       </div>
 
-      <Table columns={columns} dataSource={buses} />
+      <div className="admin-filter-bar">
+        <Select
+          allowClear
+          showSearch
+          placeholder="Filter by bus"
+          value={busFilter || undefined}
+          optionFilterProp="label"
+          onChange={(value) => setBusFilter(value || "")}
+        >
+          {buses.map((bus) => (
+            <Select.Option
+              key={bus._id}
+              value={bus._id}
+              label={`${bus.name || ""} ${bus.number || ""}`}
+            >
+              {bus.name} ({bus.number})
+            </Select.Option>
+          ))}
+        </Select>
+      </div>
+
+      <ResponsiveAntTable columns={columns} dataSource={filteredBuses} rowKey="_id" cardsAlways />
 
       {showBusForm && (
         <BusForm

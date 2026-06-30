@@ -1,0 +1,205 @@
+.booking-management-page {
+  color: #071a4d;
+}
+
+.booking-flow-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  gap: 12px;
+  margin: 12px 0 16px;
+}
+
+.booking-flow-step {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #dbe6f7;
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  min-height: 58px;
+  padding: 12px;
+}
+
+.booking-flow-step span {
+  align-items: center;
+  background: #0b5cff;
+  border-radius: 6px;
+  color: #ffffff;
+  display: inline-flex;
+  font-weight: 700;
+  height: 26px;
+  justify-content: center;
+  width: 26px;
+}
+
+.booking-flow-step strong {
+  color: #071a4d;
+  font-size: 13px;
+}
+
+.bm-card {
+  border: 1px solid #dbe6f7;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(7, 26, 77, 0.04);
+}
+
+.bm-card .ant-card-head {
+  background: #fbfdff;
+  border-bottom: 1px solid #dbe6f7;
+}
+
+.bm-card .ant-card-head-title {
+  color: #071a4d;
+  font-weight: 700;
+}
+
+.bm-empty {
+  min-height: 420px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bm-ticket-search {
+  width: 100%;
+}
+
+.bm-ticket-search .ant-select-selector {
+  border: 1px solid #d6dce8 !important;
+  border-radius: 6px !important;
+  min-height: 40px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bm-ticket-search.ant-select-focused .ant-select-selector {
+  border-color: #0b5cff !important;
+  box-shadow: 0 0 0 3px rgba(11, 92, 255, 0.12) !important;
+}
+
+.bm-ticket-search .ant-input-affix-wrapper {
+  border: 0;
+  box-shadow: none;
+  padding-left: 0;
+}
+
+.bm-ticket-search-icon {
+  color: #0b5cff;
+  font-size: 16px;
+}
+
+.bm-search-option {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.bm-search-option span {
+  color: #667899;
+  font-size: 12px;
+}
+
+.bm-ticket-heading {
+  margin-bottom: 14px;
+}
+
+.bm-info-panel {
+  border: 1px solid #dbe6f7;
+  border-radius: 8px;
+  min-height: 100%;
+  padding: 14px;
+}
+
+.bm-info-panel h4 {
+  color: #071a4d;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.bm-info-panel p {
+  color: #5b6f97;
+  font-size: 12px;
+  margin: 10px 0 2px;
+}
+
+.bm-info-panel strong {
+  color: #071a4d;
+}
+
+.bm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.bm-refund-options {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+.bm-refund-options .ant-radio-wrapper {
+  border: 1px solid #dbe6f7;
+  border-radius: 8px;
+  margin: 0;
+  padding: 10px;
+}
+
+.bm-refund-options strong,
+.bm-refund-options span {
+  display: block;
+}
+
+.bm-refund-options span {
+  color: #5b6f97;
+  font-size: 12px;
+}
+
+.bm-green-button {
+  background: #13a85b;
+  border-color: #13a85b;
+}
+
+.bm-completed {
+  text-align: center;
+}
+
+.bm-completed i {
+  color: #13a85b;
+  font-size: 48px;
+}
+
+.bm-completed h3 {
+  color: #13a85b;
+  font-weight: 700;
+}
+
+.bm-print-ticket {
+  border: 1px solid #dbe6f7;
+  border-radius: 8px;
+  color: #071a4d;
+  padding: 18px;
+}
+
+.bm-print-ticket h2 {
+  color: #071a4d;
+  margin-bottom: 14px;
+}
+
+.w-100 {
+  width: 100%;
+}
+
+@media (max-width: 1000px) {
+  .booking-flow-strip {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .booking-flow-strip {
+    grid-template-columns: 1fr;
+  }
+}

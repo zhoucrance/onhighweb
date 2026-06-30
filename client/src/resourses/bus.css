@@ -1,15 +1,30 @@
 .bus-container {
-  width: 300px !important;
-  border: 2px solid gray;
+  width: min(100%, 340px) !important;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  box-sizing: border-box;
+  margin: 0 auto;
   padding: 10px;
 }
+
+.bus-container .ant-col-6 {
+  flex: 0 0 25% !important;
+  max-width: 25% !important;
+}
+
 .seat {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px;
-  border: 1px solid gray;
-  border-radius: 2px;
+  aspect-ratio: 1;
+  border: 1px solid #aeb7c6;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  min-height: 30px;
+  padding: 4px;
+  width: 100%;
 }
 
 .selected-seat{
@@ -22,4 +37,17 @@
     color: white;
     pointer-events: none !important;
     cursor: disabled !important;
+}
+
+@media (max-width: 576px) {
+  .bus-container {
+    padding: 8px;
+    width: 100% !important;
+  }
+
+  .seat {
+    font-size: 11px;
+    min-height: 28px;
+    padding: 3px;
+  }
 }

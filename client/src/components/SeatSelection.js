@@ -4,8 +4,11 @@ import "../resourses/bus.css";
 
 function SeatSelection({ selectedSeats, setSelectedSeats, bus }) {
   const capacity = bus.capacity;
+  const bookedSeats = (bus.seatsBooked || []).map((seat) => Number(seat));
 
   const selectOrUnselectSeats = (seatNumber) => {
+    if (bookedSeats.includes(seatNumber)) return;
+
     if (selectedSeats.includes(seatNumber)) {
       setSelectedSeats(selectedSeats.filter((seat) => seat !== seatNumber));
     } else {
@@ -22,12 +25,12 @@ function SeatSelection({ selectedSeats, setSelectedSeats, bus }) {
             if(selectedSeats.includes(seat+1))
             {
                 seatClass = 'selected-seat'
-            }else if (bus.seatsBooked.includes(seat+1))
+            }else if (bookedSeats.includes(seat+1))
             {
                 seatClass = 'booked-seat'
             }
             return (
-              <Col span={6}>
+              <Col span={6} key={seat + 1}>
                 <div
                   className={`seat ${seatClass}`}
                   onClick={() => selectOrUnselectSeats(seat + 1)}

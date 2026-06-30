@@ -2,23 +2,45 @@ import { Col, message, Row } from "antd";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import SeatSelection from "../components/SeatSelection";
 import { axiosInstance } from "../helpers/axiosInstance";
 import { HideLoading, ShowLoading } from "../redux/alertsSlice";
-import StripeCheckout from "react-stripe-checkout";
+
+const getTodayDate = () => {
+  const now = new Date();
+  const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 10);
+};
+
+const currencyLabel = (currency) => (String(currency || "").toUpperCase() === "ZAR" ? "R" : "US$");
 
 function BookNow() {
   const [selectedSeats, setSelectedSeats] = useState([]);
   const params = useParams();
+  const [searchParams] = useSearchParams();
+  const isTripBooking = searchParams.get("type") === "trip";
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [bus, setBus] = useState(null);
+  const todayDate = getTodayDate();
+  const isPastJourneyDate = bus?.journeyDate && bus.journeyDate.slice(0, 10) < todayDate;
   const getBus = async () => {
     try {
       dispatch(ShowLoading());
-      const response = await axiosInstance.post("/api/buses/get-bus-by-id", {
-        _id: params.id,
-      });
+      const response = await axiosInstance.post(
+        isTripBooking ? "/api/routes/get-trip-by-id" : "/api/buses/get-bus-by-id",
+        isTripBooking
+          ? {
+              _id: params.id,
+              fromStopId: searchParams.get("fromStopId"),
+              toStopId: searchParams.get("toStopId"),
+              journeyDate: searchParams.get("journeyDate"),
+            }
+          : {
+              _id: params.id,
+            }
+      );
       dispatch(HideLoading());
       if (response.data.success) {
         setBus(response.data.data);
@@ -31,13 +53,34 @@ function BookNow() {
     }
   };
 
-  const bookNow = async (transactionId) => {
+  const bookNow = async () => {
+    if (isPastJourneyDate) {
+      message.error("Past dates are not allowed for booking.");
+      return;
+    }
+
     try {
       dispatch(ShowLoading());
       const response = await axiosInstance.post("/api/bookings/book-seat", {
-        bus: bus._id,
+        bus: bus.busId || bus._id,
+        trip: bus.tripId,
+        route: bus.routeId,
+        fromStop: bus.fromStopId,
+        toStop: bus.toStopId,
+        fromStopOrder: bus.fromStopOrder,
+        toStopOrder: bus.toStopOrder,
+        fromCity: bus.from,
+        toCity: bus.to,
+        departureTime: bus.departure,
+        arrivalTime: bus.arrival,
+        journeyDate: bus.journeyDate || bus.date,
+        travelDate: bus.journeyDate || bus.date,
+        boardingPoint: bus.boardingPoint,
+        dropOffPoint: bus.dropOffPoint,
+        fare: bus.fare,
+        currency: bus.currency || bus.fareCurrency || "USD",
         seats: selectedSeats,
-        transactionId,
+        transactionId: "DIRECT-" + Date.now(),
       });
       dispatch(HideLoading());
       if (response.data.success) {
@@ -52,25 +95,6 @@ function BookNow() {
     }
   };
 
-  const onToken = async (token) => {
-    try {
-      dispatch(ShowLoading());
-      const response = await axiosInstance.post("/api/bookings/make-payment", {
-        token,
-        amount: selectedSeats.length * bus.fare * 100,
-      });
-      dispatch(HideLoading());
-      if (response.data.success) {
-        message.success(response.data.message);
-        bookNow(response.data.data.transactionId);
-      } else {
-        message.error(response.data.message);
-      }
-    } catch (error) {
-      dispatch(HideLoading());
-      message.error(error.message);
-    }
-  };
   useEffect(() => {
     getBus();
   }, []);
@@ -87,10 +111,10 @@ function BookNow() {
 
             <div className="flex flex-col gap-2">
               <p className="text-md">
-                Jourey Date : {bus.journeyDate}
+                Journey Date : {bus.journeyDate}
               </p>
               <p className="text-md">
-                Fare : $ {bus.fare} /-
+                Fare : {currencyLabel(bus.currency || bus.fareCurrency)} {bus.fare} /-
               </p>
               <p className="text-md">
                 Departure Time : {bus.departure}
@@ -98,11 +122,17 @@ function BookNow() {
               <p className="text-md">
                 Arrival Time : {bus.arrival}
               </p>
+              {bus.boardingPoint && (
+                <p className="text-md">Boarding Point : {bus.boardingPoint}</p>
+              )}
+              {bus.dropOffPoint && (
+                <p className="text-md">Drop-off Point : {bus.dropOffPoint}</p>
+              )}
               <p className="text-md">
                 Capacity : {bus.capacity}
               </p>
               <p className="text-md">
-                Seats Left : {bus.capacity - bus.seatsBooked.length}
+                Seats Left : {bus.seatsLeft ?? bus.capacity - bus.seatsBooked.length}
               </p>
             </div>
             <hr />
@@ -112,26 +142,19 @@ function BookNow() {
                 Selected Seats : {selectedSeats.join(", ")}
               </h1>
               <h1 className="text-2xl mt-2">
-                Fare : {bus.fare * selectedSeats.length} /-
+                Fare : {currencyLabel(bus.currency || bus.fareCurrency)} {bus.fare * selectedSeats.length} /-
               </h1>
               <hr />
 
-              <StripeCheckout
-                billingAddress
-                token={onToken}
-                amount={bus.fare * selectedSeats.length * 100}
-                currency="INR"
-                stripeKey="pk_test_51IYnC0SIR2AbPxU0TMStZwFUoaDZle9yXVygpVIzg36LdpO8aSG8B9j2C0AikiQw2YyCI8n4faFYQI5uG3Nk5EGQ00lCfjXYvZ"
+              <button
+                className={`primary-btn ${
+                  (selectedSeats.length === 0 || isPastJourneyDate) && "disabled-btn"
+                }`}
+                disabled={selectedSeats.length === 0 || isPastJourneyDate}
+                onClick={bookNow}
               >
-                <button
-                  className={`primary-btn ${
-                    selectedSeats.length === 0 && "disabled-btn"
-                  }`}
-                  disabled={selectedSeats.length === 0}
-                >
-                  Book Now
-                </button>
-              </StripeCheckout>
+                Book Now
+              </button>
             </div>
           </Col>
           <Col lg={12} xs={24} sm={24}>

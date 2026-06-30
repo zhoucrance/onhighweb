@@ -6,12 +6,22 @@ const port = process.env.PORT || 5000;
 app.use(express.json());
 
 const usersRoute = require("./routes/usersRoute");
+const authRoute = require("./routes/authRoute");
 const busesRoute = require("./routes/busesRoute");
 const bookingsRoute = require("./routes/bookingsRoute");
+const routesRoute = require("./routes/routesRoute");
+const companiesRoute = require("./routes/companiesRoute");
+const notificationsRoute = require("./routes/notificationsRoute");
+const tripsRoute = require("./routes/tripsRoute");
 
+app.use("/api/auth", authRoute);
 app.use("/api/users", usersRoute);
 app.use("/api/buses", busesRoute);
 app.use("/api/bookings", bookingsRoute);
+app.use("/api/routes", routesRoute);
+app.use("/api/trips", tripsRoute);
+app.use("/api/companies", companiesRoute);
+app.use("/api/notifications", notificationsRoute);
 const path = require("path");
 if(process.env.NODE_ENV === "production")
 {
