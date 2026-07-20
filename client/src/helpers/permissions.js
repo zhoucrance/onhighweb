@@ -7,6 +7,7 @@ export const modulePermissions = [
   "users",
   "booking_management",
   "seats",
+  "help_desk",
 ];
 
 export const getUserRole = (user) => {

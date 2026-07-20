@@ -5,6 +5,24 @@ const { requireSuperAdmin, serializeAuthUser } = require("../middlewares/authori
 
 const normalizeString = (value) => String(value || "").trim();
 
+const withoutPesepaySecrets = (company) => {
+  if (!company) return company;
+  const data = typeof company.toObject === "function" ? company.toObject() : { ...company };
+  delete data.pesepayIntegrationKey;
+  delete data.pesepayEncryptionKey;
+  return data;
+};
+
+const serializePesepaySettings = (company) => ({
+  _id: company._id,
+  companyName: company.companyName,
+  companyLogo: company.companyLogo,
+  companyStatus: company.companyStatus,
+  hasPesepayIntegrationKey: Boolean(normalizeString(company.pesepayIntegrationKey)),
+  hasPesepayEncryptionKey: Boolean(normalizeString(company.pesepayEncryptionKey)),
+  pesepayKeysUpdatedAt: company.pesepayKeysUpdatedAt || null,
+});
+
 router.post("/", authMiddleware, requireSuperAdmin, async (req, res) => {
   try {
     const company = await new Company({
@@ -17,7 +35,7 @@ router.post("/", authMiddleware, requireSuperAdmin, async (req, res) => {
     res.send({
       message: "Company created successfully",
       success: true,
-      data: company,
+      data: withoutPesepaySecrets(company),
     });
   } catch (error) {
     res.status(500).send({ message: error.message, success: false, data: null });
@@ -28,11 +46,58 @@ router.get("/", authMiddleware, async (req, res) => {
   try {
     const authUser = serializeAuthUser(req.user);
     const query = authUser.role === "SUPER_ADMIN" ? {} : { _id: authUser.companyId };
-    const companies = await Company.find(query);
+    const companies = await Company.find(query).select("-pesepayIntegrationKey -pesepayEncryptionKey");
     res.send({
       message: "Companies fetched successfully",
       success: true,
       data: companies,
+    });
+  } catch (error) {
+    res.status(500).send({ message: error.message, success: false, data: null });
+  }
+});
+
+router.get("/pesepay-settings/list", authMiddleware, requireSuperAdmin, async (req, res) => {
+  try {
+    const companies = await Company.find({}).sort({ companyName: 1 });
+    res.send({
+      message: "Pesepay settings fetched successfully",
+      success: true,
+      data: companies.map(serializePesepaySettings),
+    });
+  } catch (error) {
+    res.status(500).send({ message: error.message, success: false, data: null });
+  }
+});
+
+router.patch("/pesepay-settings/:id", authMiddleware, requireSuperAdmin, async (req, res) => {
+  try {
+    const integrationKey = normalizeString(req.body.pesepayIntegrationKey);
+    const encryptionKey = normalizeString(req.body.pesepayEncryptionKey);
+
+    if (!integrationKey || !encryptionKey) {
+      return res.status(400).send({
+        message: "Pesepay integration key and encryption key are required.",
+        success: false,
+        data: null,
+      });
+    }
+
+    const company = await Company.findByIdAndUpdate(
+      req.params.id,
+      {
+        pesepayIntegrationKey: integrationKey,
+        pesepayEncryptionKey: encryptionKey,
+        pesepayKeysUpdatedAt: new Date(),
+        pesepayKeysUpdatedBy: req.user._id,
+      },
+      { new: true }
+    );
+    if (!company) return res.status(404).send({ message: "Company not found", success: false, data: null });
+    res.send({
+      message: "Pesepay keys saved successfully",
+      success: true,
+      data: serializePesepaySettings(company),
     });
   } catch (error) {
     res.status(500).send({ message: error.message, success: false, data: null });
@@ -45,7 +110,7 @@ router.get("/:id", authMiddleware, async (req, res) => {
     if (authUser.role !== "SUPER_ADMIN" && String(authUser.companyId || "") !== String(req.params.id)) {
       return res.status(403).send({ message: "Access denied", success: false, data: null });
     }
-    const company = await Company.findById(req.params.id);
+    const company = await Company.findById(req.params.id).select("-pesepayIntegrationKey -pesepayEncryptionKey");
     if (!company) return res.status(404).send({ message: "Company not found", success: false, data: null });
     res.send({ message: "Company fetched successfully", success: true, data: company });
   } catch (error) {
@@ -65,7 +130,7 @@ router.patch("/:id", authMiddleware, requireSuperAdmin, async (req, res) => {
       { new: true }
     );
     if (!company) return res.status(404).send({ message: "Company not found", success: false, data: null });
-    res.send({ message: "Company updated successfully", success: true, data: company });
+    res.send({ message: "Company updated successfully", success: true, data: withoutPesepaySecrets(company) });
   } catch (error) {
     res.status(500).send({ message: error.message, success: false, data: null });
   }

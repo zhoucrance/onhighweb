@@ -15,6 +15,22 @@ const companySchema = new mongoose.Schema(
       enum: ["Active", "Inactive"],
       default: "Active",
     },
+    pesepayIntegrationKey: {
+      type: String,
+      default: "",
+    },
+    pesepayEncryptionKey: {
+      type: String,
+      default: "",
+    },
+    pesepayKeysUpdatedAt: {
+      type: Date,
+    },
+    pesepayKeysUpdatedBy: {
+      type: mongoose.Schema.ObjectId,
+      ref: "users",
+      default: null,
+    },
     createdBy: {
       type: mongoose.Schema.ObjectId,
       ref: "users",

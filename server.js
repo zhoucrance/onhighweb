@@ -13,6 +13,7 @@ const routesRoute = require("./routes/routesRoute");
 const companiesRoute = require("./routes/companiesRoute");
 const notificationsRoute = require("./routes/notificationsRoute");
 const tripsRoute = require("./routes/tripsRoute");
+const helpDeskRoute = require("./routes/helpDeskRoute");
 
 app.use("/api/auth", authRoute);
 app.use("/api/users", usersRoute);
@@ -22,6 +23,8 @@ app.use("/api/routes", routesRoute);
 app.use("/api/trips", tripsRoute);
 app.use("/api/companies", companiesRoute);
 app.use("/api/notifications", notificationsRoute);
+app.use("/api/help-desk", helpDeskRoute);
+app.use("/api/helpdesk", helpDeskRoute);
 const path = require("path");
 if(process.env.NODE_ENV === "production")
 {

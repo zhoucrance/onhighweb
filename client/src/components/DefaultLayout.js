@@ -60,6 +60,12 @@ function DefaultLayout({ children }) {
       superAdminOnly: true,
     },
     {
+      name: "Payments",
+      path: "/admin/pesepay-settings",
+      icon: "ri-bank-card-line",
+      superAdminOnly: true,
+    },
+    {
       name: "Routes",
       path: "/admin/routes",
       icon: "ri-route-line",
@@ -93,6 +99,12 @@ function DefaultLayout({ children }) {
       path: "/admin/seat-availability",
       icon: "ri-dashboard-3-line",
       permission: "seats",
+    },
+    {
+      name: "Help Desk",
+      path: "/admin/help-desk",
+      icon: "ri-customer-service-2-line",
+      permission: "help_desk",
     },
     {
       name: "Logout",

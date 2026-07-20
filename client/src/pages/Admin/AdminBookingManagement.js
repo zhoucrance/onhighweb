@@ -327,12 +327,37 @@ function AdminBookingManagement() {
                       <h4>Customer Details</h4>
                       <p>Name</p>
                       <strong>{selectedBooking.customer.name}</strong>
+                      <p>Nationality</p>
+                      <strong>{selectedBooking.customer.nationality || "-"}</strong>
+                      <p>Gender</p>
+                      <strong>{selectedBooking.customer.gender || "-"}</strong>
+                      <p>Date of Birth</p>
+                      <strong>{selectedBooking.customer.dateOfBirth || "-"}</strong>
                       <p>Phone</p>
                       <strong>{selectedBooking.customer.phone}</strong>
+                      <p>Email</p>
+                      <strong>{selectedBooking.customer.email || "-"}</strong>
+                      <p>Emergency Contact</p>
+                      <strong>
+                        {selectedBooking.emergencyContact?.name || "-"}
+                        {selectedBooking.emergencyContact?.phone && selectedBooking.emergencyContact.phone !== "-"
+                          ? ` (${selectedBooking.emergencyContact.phone})`
+                          : ""}
+                      </strong>
                       <p>Source</p>
                       <strong>{sourceLabel}</strong>
                       <p>Bookings Count</p>
                       <strong>{selectedBooking.customer.bookingCount}</strong>
+                      {selectedBooking.additionalPassengers?.length > 0 && (
+                        <>
+                          <p>Other Passengers</p>
+                          <strong>
+                            {selectedBooking.additionalPassengers
+                              .map((passenger) => `${passenger.passengerNumber}. ${passenger.fullName} (${passenger.passengerType})`)
+                              .join(", ")}
+                          </strong>
+                        </>
+                      )}
                     </div>
                   </Col>
                   <Col xs={24} md={8}>
@@ -361,6 +386,10 @@ function AdminBookingManagement() {
                       <strong>USD {selectedBooking.payment.amountPaid.toFixed(2)}</strong>
                       <p>Payment Method</p>
                       <strong>{selectedBooking.payment.paymentMethod}</strong>
+                      <p>Pesepay Ref</p>
+                      <strong>{selectedBooking.payment.paymentReference}</strong>
+                      <p>Merchant Ref</p>
+                      <strong>{selectedBooking.payment.paymentMerchantReference}</strong>
                       <p>Payment Status</p>
                       {statusTag(selectedBooking.payment.paymentStatus)}
                       <p>Boarded Status</p>
@@ -541,6 +570,25 @@ function AdminBookingManagement() {
             <h2>OnhighBus Ticket</h2>
             <p>Ticket No: {selectedBooking.ticketNumber}</p>
             <p>Passenger: {selectedBooking.customer.name}</p>
+            <p>Nationality: {selectedBooking.customer.nationality || "-"}</p>
+            <p>Gender: {selectedBooking.customer.gender || "-"}</p>
+            <p>Date of Birth: {selectedBooking.customer.dateOfBirth || "-"}</p>
+            <p>Phone: {selectedBooking.customer.phone || "-"}</p>
+            <p>Email: {selectedBooking.customer.email || "-"}</p>
+            {selectedBooking.additionalPassengers?.length > 0 && (
+              <p>
+                Other Passengers:{" "}
+                {selectedBooking.additionalPassengers
+                  .map((passenger) => `${passenger.passengerNumber}. ${passenger.fullName} (${passenger.passengerType})`)
+                  .join(", ")}
+              </p>
+            )}
+            <p>
+              Emergency Contact: {selectedBooking.emergencyContact?.name || "-"}
+              {selectedBooking.emergencyContact?.phone && selectedBooking.emergencyContact.phone !== "-"
+                ? ` (${selectedBooking.emergencyContact.phone})`
+                : ""}
+            </p>
             <p>
               Route: {selectedBooking.trip.from} to {selectedBooking.trip.to}
             </p>

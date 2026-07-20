@@ -18,6 +18,8 @@ import AdminRoutes from "./pages/Admin/AdminRoutes";
 import AdminTrips from "./pages/Admin/AdminTrips";
 import AdminSeatAvailability from "./pages/Admin/AdminSeatAvailability";
 import AdminServiceFees from "./pages/Admin/AdminServiceFees";
+import AdminHelpDesk from "./pages/Admin/AdminHelpDesk";
+import AdminPesepaySettings from "./pages/Admin/AdminPesepaySettings";
 import AccessDenied from "./pages/AccessDenied";
 import { hasPermission, isSuperAdmin } from "./helpers/permissions";
 
@@ -154,6 +156,26 @@ function App() {
               <ProtectedRoute>
                 <PermissionRoute superAdminOnly>
                   <AdminServiceFees />
+                </PermissionRoute>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/pesepay-settings"
+            element={
+              <ProtectedRoute>
+                <PermissionRoute superAdminOnly>
+                  <AdminPesepaySettings />
+                </PermissionRoute>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/help-desk"
+            element={
+              <ProtectedRoute>
+                <PermissionRoute permission="help_desk">
+                  <AdminHelpDesk />
                 </PermissionRoute>
               </ProtectedRoute>
             }

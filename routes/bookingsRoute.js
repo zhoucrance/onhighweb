@@ -1106,6 +1106,49 @@ const getTicketCredits = async (booking, ticketNumber) => {
   };
 };
 
+const normalizePassengerRecord = (passenger, fallbackNumber = 1) => ({
+  passengerNumber: Number(passenger?.passengerNumber || fallbackNumber),
+  firstName: normalizeString(passenger?.firstName) || "-",
+  surname: normalizeString(passenger?.surname) || "-",
+  fullName:
+    normalizeString(passenger?.fullName) ||
+    [normalizeString(passenger?.firstName), normalizeString(passenger?.surname)].filter(Boolean).join(" ") ||
+    "-",
+  nationality: normalizeString(passenger?.nationality) || "-",
+  gender: normalizeString(passenger?.gender) || "-",
+  dateOfBirth: normalizeString(passenger?.dateOfBirth) || "-",
+  passengerType: normalizeString(passenger?.passengerType || "adult") || "adult",
+  isPrimary: Boolean(passenger?.isPrimary),
+});
+
+const getManagementPassengers = (booking) => {
+  const storedPassengers = Array.isArray(booking.passengers) ? booking.passengers : [];
+  if (storedPassengers.length) {
+    return storedPassengers.map((passenger, index) => normalizePassengerRecord(passenger, index + 1));
+  }
+
+  const primary = normalizePassengerRecord(
+    {
+      passengerNumber: 1,
+      firstName: booking.passengerFirstName,
+      surname: booking.passengerSurname,
+      fullName: booking.customerName || booking.passengerName,
+      nationality: booking.passengerNationality,
+      gender: booking.passengerGender,
+      dateOfBirth: booking.passengerDateOfBirth,
+      passengerType: booking.passengerType || "adult",
+      isPrimary: true,
+    },
+    1
+  );
+  const additional = Array.isArray(booking.additionalPassengers)
+    ? booking.additionalPassengers
+    : Array.isArray(booking.additional_passengers)
+    ? booking.additional_passengers
+    : [];
+  return [primary, ...additional.map((passenger, index) => normalizePassengerRecord(passenger, index + 2))];
+};
+
 const normalizeManagementBooking = (booking) => {
   const source = getManagementSource(booking);
   const bookingStatus = getManagementStatus(booking, source);
@@ -1113,6 +1156,8 @@ const normalizeManagementBooking = (booking) => {
   const seats = Array.isArray(booking.seats) ? booking.seats : [];
   const boardedAt = booking.boardedTime || booking.updatedAt || booking.createdAt;
   const amountPaid = getBookingAmount(booking);
+  const passengers = getManagementPassengers(booking);
+  const additionalPassengers = passengers.filter((passenger) => !passenger.isPrimary);
 
   return {
     _id: booking._id,
@@ -1121,11 +1166,22 @@ const normalizeManagementBooking = (booking) => {
     sourceLabel: getManagementSourceLabel(booking),
     customer: {
       name: normalizeString(booking.customerName || booking.passengerName || booking.user?.name) || "Walk-in Customer",
+      firstName: normalizeString(booking.passengerFirstName) || "-",
+      surname: normalizeString(booking.passengerSurname) || "-",
+      nationality: normalizeString(booking.passengerNationality) || "-",
+      gender: normalizeString(booking.passengerGender) || "-",
+      dateOfBirth: normalizeString(booking.passengerDateOfBirth) || "-",
       phone:
         normalizeString(booking.customerPhone || booking.passengerPhone || booking.cancelledByNumber || booking.user?.phone) ||
         "-",
-      email: normalizeString(booking.customerEmail || booking.user?.email) || "-",
-      bookingCount: booking.bookingCount || 1,
+      email: normalizeString(booking.customerEmail || booking.passengerEmail || booking.user?.email) || "-",
+      bookingCount: booking.passengerCount || passengers.length || booking.bookingCount || 1,
+    },
+    passengers,
+    additionalPassengers,
+    emergencyContact: {
+      name: normalizeString(booking.emergencyContactName || booking.emergency_contact_name) || "-",
+      phone: normalizeString(booking.emergencyContactPhone || booking.emergency_contact_phone) || "-",
     },
     trip: {
       bus: normalizeString(booking.busName || booking.bus?.name) || "-",
@@ -1144,6 +1200,8 @@ const normalizeManagementBooking = (booking) => {
       amountPaid,
       paymentMethod: normalizeString(booking.paymentMethod) || (booking.transactionId ? "Online" : "Cash"),
       paymentStatus: normalizeString(booking.paymentStatus) || "Paid",
+      paymentReference: normalizeString(booking.paymentReference || booking.payment_reference) || "-",
+      paymentMerchantReference: normalizeString(booking.paymentMerchantReference || booking.payment_merchant_reference) || "-",
     },
     bookingStatus,
     isTicketValid,

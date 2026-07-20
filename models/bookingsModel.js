@@ -94,16 +94,82 @@ const bookingSchema = new mongoose.Schema(
     passengerName: {
       type: String,
     },
+    passengerFirstName: {
+      type: String,
+    },
+    passengerSurname: {
+      type: String,
+    },
+    passengerNationality: {
+      type: String,
+    },
     passengerAge: {
       type: String,
     },
     passengerGender: {
       type: String,
     },
+    passengerDateOfBirth: {
+      type: String,
+    },
+    passengerType: {
+      type: String,
+    },
+    passengers: [
+      {
+        passengerNumber: Number,
+        firstName: String,
+        surname: String,
+        fullName: String,
+        nationality: String,
+        gender: String,
+        dateOfBirth: String,
+        passengerType: String,
+        isPrimary: Boolean,
+      },
+    ],
+    additionalPassengers: [
+      {
+        passengerNumber: Number,
+        firstName: String,
+        surname: String,
+        fullName: String,
+        nationality: String,
+        gender: String,
+        dateOfBirth: String,
+        passengerType: String,
+        isPrimary: Boolean,
+      },
+    ],
+    additional_passengers: [
+      {
+        passengerNumber: Number,
+        firstName: String,
+        surname: String,
+        fullName: String,
+        nationality: String,
+        gender: String,
+        dateOfBirth: String,
+        passengerType: String,
+        isPrimary: Boolean,
+      },
+    ],
+    passengerCount: {
+      type: Number,
+    },
+    emergencyContactName: {
+      type: String,
+    },
+    emergencyContactPhone: {
+      type: String,
+    },
     customerPhone: {
       type: String,
     },
     passengerPhone: {
+      type: String,
+    },
+    passengerEmail: {
       type: String,
     },
     customerEmail: {
@@ -131,6 +197,12 @@ const bookingSchema = new mongoose.Schema(
       type: Number,
     },
     paymentMethod: {
+      type: String,
+    },
+    paymentReference: {
+      type: String,
+    },
+    paymentMerchantReference: {
       type: String,
     },
     creditAppliedAmount: {
