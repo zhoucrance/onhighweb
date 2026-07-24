@@ -25,8 +25,9 @@ function AuditNotifications({ user }) {
   const audioContextRef = React.useRef(null);
   const hasLoadedNotificationsRef = React.useRef(false);
   const previousUnreadCountRef = React.useRef(0);
+  const previousNotificationIdsRef = React.useRef(new Set());
 
-  const playNotificationSound = React.useCallback(() => {
+  const playNotificationSound = React.useCallback((variant = "default") => {
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (!AudioContext) return;
@@ -37,18 +38,27 @@ function AuditNotifications({ user }) {
         audioContext.resume();
       }
 
-      const oscillator = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(660, audioContext.currentTime + 0.14);
-      gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.18, audioContext.currentTime + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.18);
-      oscillator.connect(gain);
-      gain.connect(audioContext.destination);
-      oscillator.start();
-      oscillator.stop(audioContext.currentTime + 0.2);
+      const playTone = (frequency, startAt, duration, endFrequency = frequency) => {
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        oscillator.type = variant === "booking_success" ? "triangle" : "sine";
+        oscillator.frequency.setValueAtTime(frequency, startAt);
+        oscillator.frequency.exponentialRampToValueAtTime(endFrequency, startAt + duration * 0.75);
+        gain.gain.setValueAtTime(0.0001, startAt);
+        gain.gain.exponentialRampToValueAtTime(0.18, startAt + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+        oscillator.start(startAt);
+        oscillator.stop(startAt + duration + 0.02);
+      };
+
+      if (variant === "booking_success") {
+        playTone(740, audioContext.currentTime, 0.16, 988);
+        playTone(988, audioContext.currentTime + 0.16, 0.2, 1318);
+      } else {
+        playTone(880, audioContext.currentTime, 0.18, 660);
+      }
     } catch (error) {
       console.log("[audit-notifications] sound blocked", error.message);
     }
@@ -74,12 +84,17 @@ function AuditNotifications({ user }) {
       const response = await axiosInstance.get("/api/notifications?limit=20");
       if (response.data.success) {
         const nextUnreadCount = Number(response.data.unreadCount || 0);
-        setNotifications(response.data.data || []);
+        const nextNotifications = response.data.data || [];
+        setNotifications(nextNotifications);
         setUnreadCount(nextUnreadCount);
         if (hasLoadedNotificationsRef.current && nextUnreadCount > previousUnreadCountRef.current) {
-          playNotificationSound();
+          const previousIds = previousNotificationIdsRef.current;
+          const newNotifications = nextNotifications.filter((notification) => !previousIds.has(notification._id));
+          const hasBookingSuccess = newNotifications.some((notification) => notification.action === "booking_success");
+          playNotificationSound(hasBookingSuccess ? "booking_success" : "default");
         }
         hasLoadedNotificationsRef.current = true;
+        previousNotificationIdsRef.current = new Set(nextNotifications.map((notification) => notification._id));
         previousUnreadCountRef.current = nextUnreadCount;
       }
     } catch (error) {
