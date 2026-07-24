@@ -10,21 +10,58 @@ const canSeeNotifications = (user) => {
   return authUser?.role === "SUPER_ADMIN" || authUser?.role === "COMPANY_ADMIN";
 };
 
-const getTodayDate = () => {
-  const now = new Date();
-  const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-  return localDate.toISOString().slice(0, 10);
+const parseClockTime = (value) => {
+  const match = String(value || "").trim().match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return { hours, minutes };
+};
+
+const getTripDepartureDate = (trip) => {
+  const dateText = String(trip.scheduleStartDate || trip.journeyDate || "").trim().slice(0, 10);
+  const firstStop = Array.isArray(trip.stopSchedule) ? trip.stopSchedule[0] || {} : {};
+  const timeText = firstStop.departureTime || trip.departureTime;
+  const clock = parseClockTime(timeText);
+  if (!dateText || !clock) return null;
+
+  const departureDate = new Date(`${dateText}T00:00:00`);
+  if (Number.isNaN(departureDate.getTime())) return null;
+  departureDate.setHours(clock.hours, clock.minutes, 0, 0);
+  return departureDate;
+};
+
+const getDueDepartureReminder = (departureDate, now = new Date()) => {
+  if (!departureDate) return null;
+  const minutesUntilDeparture = Math.floor((departureDate.getTime() - now.getTime()) / 60000);
+  if (minutesUntilDeparture <= 0) return null;
+
+  const windows = [
+    { key: "24h", title: "24 hours", maxMinutes: 24 * 60, minMinutes: 3 * 60 },
+    { key: "3h", title: "3 hours", maxMinutes: 3 * 60, minMinutes: 30 },
+    { key: "30m", title: "30 minutes", maxMinutes: 30, minMinutes: 0 },
+  ];
+  return windows.find(
+    (window) =>
+      minutesUntilDeparture <= window.maxMinutes &&
+      minutesUntilDeparture > window.minMinutes
+  ) || null;
 };
 
 const createTripStatusReminders = async (user) => {
   const query = notificationScopeForUser(user);
-  const today = getTodayDate();
-  const dayStart = new Date(`${today}T00:00:00.000Z`);
-  const dayEnd = new Date(`${today}T23:59:59.999Z`);
+  const now = new Date();
+  const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const today = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const tomorrow = new Date(next24Hours.getTime() - next24Hours.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const trips = await Trip.find({
     ...(query.companyId ? { companyId: query.companyId } : {}),
-    scheduleStartDate: { $lte: today },
-    status: { $in: ["Yet To Start", "In Progress"] },
+    $or: [
+      { scheduleStartDate: { $gte: today, $lte: tomorrow } },
+      { journeyDate: { $gte: today, $lte: tomorrow } },
+    ],
+    status: "Yet To Start",
     bus: { $ne: null },
   })
     .populate("bus")
@@ -39,19 +76,20 @@ const createTripStatusReminders = async (user) => {
     ]
       .filter(Boolean)
       .join(" ");
-    const nextStatus = trip.status === "Yet To Start" ? "In Progress" : "Completed";
-    const message =
-      trip.status === "Yet To Start"
-        ? `${tripLabel} is due to start. Please update the trip status to In Progress if the bus has departed.`
-        : `${tripLabel} is still In Progress. Please update the trip status to Completed when the journey is done.`;
+    const departureDate = getTripDepartureDate(trip);
+    const reminder = getDueDepartureReminder(departureDate, now);
+    if (!reminder) continue;
+
+    const departureTime = departureDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const reminderKey = `departure_${reminder.key}`;
+    const message = `${tripLabel} departs in about ${reminder.title} at ${departureTime}. Please prepare and update the trip status when boarding starts.`;
 
     const exists = await Notification.exists({
       companyId: trip.companyId || null,
       module: "trips",
       action: "status_reminder",
       entityId: trip._id,
-      message,
-      createdAt: { $gte: dayStart, $lte: dayEnd },
+      entityLabel: `${tripLabel} -> ${reminderKey}`,
     });
     if (exists) continue;
 
@@ -63,7 +101,7 @@ const createTripStatusReminders = async (user) => {
       action: "status_reminder",
       entityType: "trip",
       entityId: trip._id,
-      entityLabel: `${tripLabel} -> ${nextStatus}`,
+      entityLabel: `${tripLabel} -> ${reminderKey}`,
       message,
     });
   }
