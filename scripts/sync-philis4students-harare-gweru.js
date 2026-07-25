@@ -15,13 +15,21 @@ const getArgValue = (name) => {
 };
 
 const isApply = process.argv.includes("--apply");
-const companyIdArg = getArgValue("--companyId");
+const companyIdArgRaw = getArgValue("--companyId");
+const companyIdArg =
+  companyIdArgRaw && companyIdArgRaw !== "PASTE_COMPANY_ID_HERE" ? companyIdArgRaw : "";
 const fromCity = normalize(getArgValue("--from")) || "Harare";
 const toPattern = normalize(getArgValue("--to")) || "gweru|gweu|msu";
 
 const companyNameQuery = {
   companyName: {
     $regex: "phili?s|philips|phils",
+    $options: "i",
+  },
+};
+const preferredCompanyNameQuery = {
+  companyName: {
+    $regex: "^\\s*(phils|philis|philips)\\s*(4|for)?\\s*students\\s*$",
     $options: "i",
   },
 };
@@ -36,7 +44,7 @@ const main = async () => {
 
   const targetCompany = companyIdArg
     ? await Company.findById(companyIdArg)
-    : await Company.findOne(companyNameQuery);
+    : await Company.findOne(preferredCompanyNameQuery) || await Company.findOne(companyNameQuery);
   const matchingCompanies = await Company.find(companyIdArg ? { _id: companyIdArg } : companyNameQuery)
     .select("companyName")
     .sort({ companyName: 1 });
@@ -45,10 +53,22 @@ const main = async () => {
     throw new Error("Target Philips/Philis/Phils company not found.");
   }
   if (!companyIdArg && matchingCompanies.length > 1) {
-    console.log("More than one possible company matched. Re-run with --companyId=<id>.");
+    const preferredMatches = matchingCompanies.filter((company) =>
+      preferredCompanyNameQuery.companyName.$regex &&
+      new RegExp(preferredCompanyNameQuery.companyName.$regex, "i").test(company.companyName)
+    );
+    if (preferredMatches.length !== 1 || String(preferredMatches[0]._id) !== String(targetCompany._id)) {
+      console.log("More than one possible company matched. Re-run with --companyId=<id>.");
+      matchingCompanies.forEach((company) => console.log(`${company._id} ${company.companyName}`));
+      process.exitCode = 1;
+      return;
+    }
+    console.log(`Multiple Philips-style companies found; using exact student company: ${targetCompany.companyName}.`);
+  }
+
+  if (companyIdArgRaw === "PASTE_COMPANY_ID_HERE") {
+    console.log("Ignoring placeholder companyId and using automatic company detection.");
     matchingCompanies.forEach((company) => console.log(`${company._id} ${company.companyName}`));
-    process.exitCode = 1;
-    return;
   }
 
   const routeQuery = {
