@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Col, message, Modal, Row } from "antd";
+import { Col, message, Modal, Row, Select } from "antd";
 import { useDispatch } from "react-redux";
 import { axiosInstance } from "../helpers/axiosInstance";
 import { HideLoading, ShowLoading } from "../redux/alertsSlice";
@@ -147,6 +147,9 @@ function BoardingPointsEditor({ points, onChange }) {
 }
 
 function RouteBasicInfoForm({
+  companyId,
+  setCompanyId,
+  companies,
   routeName,
   setRouteName,
   routeCode,
@@ -159,6 +162,11 @@ function RouteBasicInfoForm({
   setStatus,
   errors,
 }) {
+  const companyOptions = companies.map((company) => ({
+    value: company._id,
+    label: company.companyName,
+  }));
+
   return (
     <div className="route-card route-basic-card">
       <div className="route-title-row">
@@ -168,6 +176,20 @@ function RouteBasicInfoForm({
         </span>
       </div>
       <Row gutter={[18, 14]}>
+        {companyOptions.length > 1 && (
+          <Col lg={6} md={12} xs={24}>
+            <label>Company <span>*</span></label>
+            <Select
+              value={companyId || undefined}
+              onChange={(value) => setCompanyId(value || "")}
+              options={companyOptions}
+              optionFilterProp="label"
+              placeholder="Select company"
+              showSearch
+            />
+            {errors.companyId && <p className="route-error">{errors.companyId}</p>}
+          </Col>
+        )}
         <Col lg={6} md={12} xs={24}>
           <label>Route Name <span>*</span></label>
           <input value={routeName} onChange={(event) => setRouteName(event.target.value)} />
@@ -744,12 +766,33 @@ function RouteForm({
   const [fareCurrency, setFareCurrency] = useState("USD");
   const [fareExchangeRate, setFareExchangeRate] = useState("");
   const [status, setStatus] = useState("Active");
+  const [companyId, setCompanyId] = useState("");
+  const [companies, setCompanies] = useState([]);
   const [stops, setStops] = useState([emptyStop(0), emptyStop(1)]);
   const [fareMap, setFareMap] = useState({});
   const [errors, setErrors] = useState({});
   const isEdit = Boolean(selectedRoute?._id);
 
   const fareKey = (fromStop, toStop) => `${stopKey(fromStop)}-${stopKey(toStop)}`;
+
+  useEffect(() => {
+    if (!showRouteForm) return;
+    const loadCompanies = async () => {
+      try {
+        const response = await axiosInstance.get("/api/companies");
+        if (response.data.success) {
+          const nextCompanies = response.data.data || [];
+          setCompanies(nextCompanies);
+          if (nextCompanies.length === 1) {
+            setCompanyId(nextCompanies[0]._id);
+          }
+        }
+      } catch (error) {
+        message.error(error.response?.data?.message || "Failed to load companies.");
+      }
+    };
+    loadCompanies();
+  }, [showRouteForm]);
 
   useEffect(() => {
     if (!selectedRoute) return;
@@ -787,6 +830,7 @@ function RouteForm({
     setFareCurrency(selectedRoute.fareCurrency || "USD");
     setFareExchangeRate(normalizeExchangeRateAmount(selectedRoute.fareExchangeRate));
     setStatus(selectedRoute.status || "Active");
+    setCompanyId(selectedRoute.companyId?._id || selectedRoute.companyId || "");
     setStops(routeStops.length ? routeStops : [emptyStop(0), emptyStop(1)]);
     setFareMap(nextFareMap);
     setErrors({});
@@ -944,6 +988,7 @@ function RouteForm({
 
     if (!routeName.trim()) nextErrors.routeName = "Route name is required";
     if (!routeCode.trim()) nextErrors.routeCode = "Route code is required";
+    if (companies.length > 1 && !companyId) nextErrors.companyId = "Company is required";
     if (!startCity.trim()) nextErrors.startCity = "Start city is required";
     if (!endCity.trim()) nextErrors.endCity = "End city is required";
     if (cleanStops.length < 2) nextErrors.stops = "Add at least two stops";
@@ -1028,6 +1073,7 @@ function RouteForm({
         _id: selectedRoute?._id,
         routeName: routeName.trim(),
         routeCode: routeCode.trim(),
+        companyId,
         totalDistance: totalDistance.trim(),
         estimatedDuration: estimatedDuration.trim(),
         fromCity: startCity.trim(),
@@ -1045,6 +1091,7 @@ function RouteForm({
         getData();
         setSelectedRoute(null);
         setShowRouteForm(false);
+        setCompanyId("");
       } else {
         message.error(response.data.message);
       }
@@ -1090,11 +1137,15 @@ function RouteForm({
       onCancel={() => {
         setSelectedRoute(null);
         setShowRouteForm(false);
+        setCompanyId("");
       }}
       footer={false}
     >
       <RouteBasicInfoForm
         routeName={routeName}
+        companyId={companyId}
+        setCompanyId={setCompanyId}
+        companies={companies}
         setRouteName={setRouteName}
         routeCode={routeCode}
         setRouteCode={setRouteCode}

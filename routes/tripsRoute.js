@@ -233,6 +233,7 @@ router.post("/save-trip", authMiddleware, async (req, res) => {
           $set: {
             trips: [savedTrip._id],
             route: route._id,
+            companyId: payload.companyId || null,
             journeyDate: savedTrip.scheduleStartDate || savedTrip.journeyDate,
             departure: savedTrip.departureTime,
             arrival: savedTrip.arrivalTime,

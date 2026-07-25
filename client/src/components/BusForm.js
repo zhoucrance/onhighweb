@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Col, Form, Input, message, Modal, Row, Select } from "antd";
 import { axiosInstance } from "../helpers/axiosInstance";
 import { useDispatch } from "react-redux";
@@ -63,6 +63,7 @@ function BusForm({
 }) {
   const dispatch = useDispatch();
   const [form] = Form.useForm();
+  const [companies, setCompanies] = useState([]);
 
   const initialValues = selectedBus
     ? {
@@ -102,9 +103,34 @@ function BusForm({
       dispatch(HideLoading());
     }
   };
+
+  useEffect(() => {
+    if (!showBusForm) return;
+    const loadCompanies = async () => {
+      try {
+        const response = await axiosInstance.get("/api/companies");
+        if (response.data.success) {
+          const nextCompanies = response.data.data || [];
+          setCompanies(nextCompanies);
+          if (nextCompanies.length === 1 && !form.getFieldValue("companyId")) {
+            form.setFieldValue("companyId", nextCompanies[0]._id);
+          }
+        }
+      } catch (error) {
+        message.error(error.response?.data?.message || "Failed to load companies.");
+      }
+    };
+    loadCompanies();
+  }, [form, showBusForm]);
+
   useEffect(() => {
     form.setFieldsValue(initialValues);
   }, [showBusForm, selectedBus]);
+
+  const companyOptions = companies.map((company) => ({
+    value: company._id,
+    label: company.companyName,
+  }));
 
   return (
     <Modal
@@ -124,6 +150,18 @@ function BusForm({
         initialValues={initialValues}
       >
         <Row gutter={[10, 10]}>
+          {companyOptions.length > 1 && (
+            <Col lg={24} xs={24}>
+              <Form.Item label="Company" name="companyId" rules={[{ required: true, message: "Select company." }]}>
+                <Select
+                  showSearch
+                  placeholder="Select company"
+                  optionFilterProp="label"
+                  options={companyOptions}
+                />
+              </Form.Item>
+            </Col>
+          )}
           <Col lg={24} xs={24}>
             <Form.Item label="Bus Name" name="name" rules={[{ required: true }]}>
               <input type="text" />

@@ -33,6 +33,14 @@ const getScopedCompanyId = (user) => {
   return authUser.companyId;
 };
 
+const getSubmittedCompanyId = (user, value) => {
+  const authUser = serializeAuthUser(user);
+  const scopedCompanyId = getScopedCompanyId(user);
+  if (scopedCompanyId) return scopedCompanyId;
+  if (authUser?.role !== "SUPER_ADMIN") return null;
+  return getIdValue(value) || null;
+};
+
 const withCompanyScope = (user, query = {}) => {
   const companyId = getScopedCompanyId(user);
   if (!companyId) return query;
@@ -417,6 +425,7 @@ router.post("/save-route", authMiddleware, async (req, res) => {
       fareCurrency,
       fareExchangeRate,
       status,
+      companyId,
       stops = [],
       fares = [],
     } = req.body;
@@ -561,7 +570,7 @@ router.post("/save-route", authMiddleware, async (req, res) => {
       }
     }
 
-    const scopedCompanyId = getScopedCompanyId(req.user);
+    const selectedCompanyId = getSubmittedCompanyId(req.user, companyId);
     if (_id) {
       const existingRouteForUpdate = await Route.findById(_id);
       if (!existingRouteForUpdate || !canAccessRoute(req.user, existingRouteForUpdate)) {
@@ -569,10 +578,11 @@ router.post("/save-route", authMiddleware, async (req, res) => {
       }
     }
 
-    const duplicateQuery = withCompanyScope(req.user, {
+    const duplicateQuery = {
       fromCity: exactCityQuery(fromCity),
       toCity: exactCityQuery(toCity),
-    });
+      ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}),
+    };
     if (_id) {
       duplicateQuery._id = { $ne: _id };
     }
@@ -584,10 +594,11 @@ router.post("/save-route", authMiddleware, async (req, res) => {
       });
     }
 
-    const existingCode = await Route.findOne(withCompanyScope(req.user, {
+    const existingCode = await Route.findOne({
       routeCode: exactCityQuery(routeCode),
+      ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}),
       ...(_id ? { _id: { $ne: _id } } : {}),
-    }));
+    });
     if (existingCode) {
       return res.status(200).send({
         success: false,
@@ -599,7 +610,7 @@ router.post("/save-route", authMiddleware, async (req, res) => {
     const routeData = {
       routeName,
       routeCode,
-      ...(scopedCompanyId ? { companyId: scopedCompanyId } : {}),
+      companyId: selectedCompanyId || null,
       fromCity,
       toCity,
       totalDistance: normalizeString(totalDistance),

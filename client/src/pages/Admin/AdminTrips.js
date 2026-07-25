@@ -119,6 +119,8 @@ const buildStopScheduleFromRoute = (route, existingSchedule = [], departureTime 
   });
 };
 
+const getRecordCompanyId = (record) => String(record?.companyId?._id || record?.companyId || "");
+
 function AdminTrips() {
   const [trips, setTrips] = useState([]);
   const [routes, setRoutes] = useState([]);
@@ -182,15 +184,32 @@ function AdminTrips() {
     () => routes.find((route) => String(route._id) === String(selectedRouteId)),
     [routes, selectedRouteId]
   );
+  const selectedRouteCompanyId = getRecordCompanyId(selectedRoute);
 
   const busOptions = useMemo(
     () =>
-      buses.map((bus) => ({
-        value: bus._id,
-        label: `${bus.name || "Bus"} ${bus.number ? `(${bus.number})` : ""}`,
-      })),
-    [buses]
+      buses
+        .filter((bus) => {
+          const busCompanyId = getRecordCompanyId(bus);
+          return !selectedRouteCompanyId || !busCompanyId || busCompanyId === selectedRouteCompanyId;
+        })
+        .map((bus) => ({
+          value: bus._id,
+          label: `${bus.name || "Bus"} ${bus.number ? `(${bus.number})` : ""}`,
+        })),
+    [buses, selectedRouteCompanyId]
   );
+
+  useEffect(() => {
+    if (!showTripForm || !selectedRouteCompanyId) return;
+    const selectedBusId = form.getFieldValue("bus");
+    if (!selectedBusId) return;
+    const selectedBus = buses.find((bus) => String(bus._id) === String(selectedBusId));
+    const selectedBusCompanyId = getRecordCompanyId(selectedBus);
+    if (selectedBusCompanyId && selectedBusCompanyId !== selectedRouteCompanyId) {
+      form.setFieldValue("bus", "");
+    }
+  }, [buses, form, selectedRouteCompanyId, showTripForm]);
 
   const filteredTrips = useMemo(() => {
     if (!routeFilter) return trips;
