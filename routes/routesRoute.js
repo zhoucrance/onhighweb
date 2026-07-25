@@ -360,6 +360,35 @@ const resolveSegmentFare = async (routeId, fromStop, toStop) => {
   return totalFare > 0 ? { fare: totalFare } : null;
 };
 
+const resolveTripSegmentFare = async (route, bus, fromStop, toStop) => {
+  const fare = await resolveSegmentFare(route._id, fromStop, toStop);
+  if (fare) return fare;
+
+  const busFare = Number(bus?.fare || 0);
+  if (busFare > 0) {
+    console.warn("[route-search] missing route fare, using bus fare fallback", {
+      routeId: String(route?._id || ""),
+      routeName: route?.routeName,
+      busId: String(bus?._id || ""),
+      busNumber: bus?.number,
+      fromCity: fromStop?.cityName,
+      toCity: toStop?.cityName,
+      fare: busFare,
+    });
+    return { fare: busFare, source: "bus" };
+  }
+
+  console.warn("[route-search] missing route fare and bus fare", {
+    routeId: String(route?._id || ""),
+    routeName: route?.routeName,
+    busId: String(bus?._id || ""),
+    busNumber: bus?.number,
+    fromCity: fromStop?.cityName,
+    toCity: toStop?.cityName,
+  });
+  return null;
+};
+
 const activeBusStatusQuery = { $nin: ["Completed", "Inactive", "Maintenance"] };
 
 const ensureTripForBusRouteDate = async (bus, routeId, journeyDate) => {
@@ -821,7 +850,7 @@ router.post("/search-trips", authMiddleware, async (req, res) => {
         routeStops.find((stop) => normalizeString(stop.cityName).toLowerCase() === toCity.toLowerCase());
       if (!fromStop || !toStop || toStop.stopOrder <= fromStop.stopOrder) continue;
 
-      const fare = await resolveSegmentFare(route._id, fromStop, toStop);
+      const fare = await resolveTripSegmentFare(route, trip.bus, fromStop, toStop);
       if (!fare) continue;
 
       matchingTripCount += 1;
@@ -923,7 +952,7 @@ router.post("/get-trip-by-id", authMiddleware, async (req, res) => {
       stops.find((stop) => stop.cityName.toLowerCase() === normalizeString(req.body.to).toLowerCase()) ||
       stops[stops.length - 1];
 
-    const fare = await resolveSegmentFare(route._id, fromStop, toStop);
+    const fare = await resolveTripSegmentFare(route, trip.bus, fromStop, toStop);
 
     return res.status(200).send({
       success: true,
