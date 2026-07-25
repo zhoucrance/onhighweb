@@ -41,6 +41,119 @@ const statusColors = {
   NOT_BOARDED: "orange",
 };
 
+const exportFilterOptions = [
+  { value: "WHATSAPP_CONFIRMED", label: "WhatsApp booked tickets" },
+  { value: "WHATSAPP_CANCELLED", label: "WhatsApp cancelled tickets" },
+  { value: "WHATSAPP_BOARDED", label: "WhatsApp boarded tickets" },
+  { value: "WHATSAPP_INVALID", label: "WhatsApp failed/expired tickets" },
+  { value: "WHATSAPP_ALL", label: "All WhatsApp tickets" },
+  { value: "WEB_CONFIRMED", label: "Web booked tickets" },
+  { value: "WEB_CANCELLED", label: "Web cancelled tickets" },
+  { value: "ALL", label: "All booking records" },
+];
+
+const escapePdfText = (value) =>
+  String(value ?? "-")
+    .replace(/[^\x20-\x7E]/g, " ")
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)")
+    .trim();
+
+const wrapPdfLine = (value, maxLength = 98) => {
+  const words = String(value ?? "-").replace(/\s+/g, " ").trim().split(" ");
+  const lines = [];
+  let current = "";
+  words.forEach((word) => {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length > maxLength && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = next;
+    }
+  });
+  if (current) lines.push(current);
+  return lines.length ? lines : ["-"];
+};
+
+const buildBookingExportPdf = ({ bookings, title, generatedAt }) => {
+  const pageLines = [];
+  const pushLine = (text, size = 9) => pageLines.push({ text, size });
+  pushLine("OnHighBus Booking Export", 16);
+  pushLine(title, 11);
+  pushLine(`Generated: ${moment(generatedAt).format("DD MMM YYYY HH:mm")}`, 9);
+  pushLine(`Records: ${bookings.length}`, 9);
+  pushLine(" ", 8);
+
+  bookings.forEach((booking, index) => {
+    const passengers = (booking.passengers || [])
+      .map((passenger) => `${passenger.passengerNumber}. ${passenger.fullName} (${passenger.passengerType}, ${passenger.gender}, ${passenger.nationality})`)
+      .join("; ");
+    [
+      `${index + 1}. Ticket: ${booking.ticketNumber || "-"} | ${booking.sourceLabel || booking.source} | ${booking.bookingStatus}`,
+      `Customer: ${booking.customer?.name || "-"} | Phone: ${booking.customer?.phone || "-"} | Email: ${booking.customer?.email || "-"}`,
+      `Passengers: ${passengers || "-"}`,
+      `Emergency: ${booking.emergencyContact?.name || "-"} ${booking.emergencyContact?.phone || ""}`,
+      `Trip: ${booking.trip?.from || "-"} to ${booking.trip?.to || "-"} | Date: ${booking.trip?.date || "-"} ${booking.trip?.time || ""}`,
+      `Bus: ${booking.trip?.bus || "-"} | Plate: ${booking.trip?.plateNumber || "-"} | Seats: ${booking.trip?.seatText || "-"}`,
+      `Boarding: ${booking.trip?.boardingPoint || "-"} | Drop-off: ${booking.trip?.dropOffPoint || "-"}`,
+      `Payment: USD ${Number(booking.payment?.amountPaid || 0).toFixed(2)} | ${booking.payment?.paymentMethod || "-"} | ${booking.payment?.paymentStatus || "-"}`,
+      `References: ${booking.payment?.paymentReference || "-"} | Merchant: ${booking.payment?.paymentMerchantReference || "-"}`,
+      `Created: ${booking.createdAt ? moment(booking.createdAt).format("DD MMM YYYY HH:mm") : "-"}`,
+      " ",
+    ].forEach((line) => wrapPdfLine(line).forEach((wrapped) => pushLine(wrapped, 8)));
+  });
+
+  const pages = [];
+  let currentPage = [];
+  let y = 748;
+  pageLines.forEach((line) => {
+    if (y < 48) {
+      pages.push(currentPage);
+      currentPage = [];
+      y = 748;
+    }
+    currentPage.push({ ...line, y });
+    y -= line.size + 5;
+  });
+  if (currentPage.length) pages.push(currentPage);
+
+  const objects = ["<< /Type /Catalog /Pages 2 0 R >>"];
+  const pageObjectIds = pages.map((_, index) => 3 + index * 2);
+  objects.push(`<< /Type /Pages /Kids [${pageObjectIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pages.length} >>`);
+  pages.forEach((page, index) => {
+    const pageObjectId = 3 + index * 2;
+    const contentObjectId = pageObjectId + 1;
+    const streamLines = ["BT"];
+    page.forEach((line) => {
+      streamLines.push(`/F1 ${line.size} Tf`);
+      streamLines.push(`50 ${line.y} Td`);
+      streamLines.push(`(${escapePdfText(line.text)}) Tj`);
+      streamLines.push(`-50 -${line.y} Td`);
+    });
+    streamLines.push("ET");
+    const contentStream = streamLines.join("\n");
+    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${3 + pages.length * 2} 0 R >> >> /Contents ${contentObjectId} 0 R >>`);
+    objects.push(`<< /Length ${contentStream.length} >>\nstream\n${contentStream}\nendstream`);
+  });
+  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets[index + 1] = pdf.length;
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  offsets.slice(1).forEach((offset) => {
+    pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  });
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return pdf;
+};
+
 function AdminBookingManagement() {
   const dispatch = useDispatch();
   const [form] = Form.useForm();
@@ -51,6 +164,7 @@ function AdminBookingManagement() {
   const [cancellationDraft, setCancellationDraft] = useState(null);
   const [completion, setCompletion] = useState(null);
   const [printOpen, setPrintOpen] = useState(false);
+  const [exportFilter, setExportFilter] = useState("WHATSAPP_CONFIRMED");
   const ticketRef = useRef();
 
   const selectedRefundMethods = selectedBooking?.refundMethods || [];
@@ -68,6 +182,44 @@ function AdminBookingManagement() {
   const statusTag = (value) => (
     <Tag color={statusColors[value] || "default"}>{String(value || "-").replaceAll("_", " ")}</Tag>
   );
+
+  const downloadExportPdf = async () => {
+    const selectedFilter = exportFilterOptions.find((option) => option.value === exportFilter);
+    try {
+      dispatch(ShowLoading());
+      const response = await axiosInstance.post("/api/bookings/management/export", {
+        filter: exportFilter,
+      });
+      dispatch(HideLoading());
+      if (!response.data.success) {
+        message.error(response.data.message);
+        return;
+      }
+      const bookings = response.data.data || [];
+      if (!bookings.length) {
+        message.warning("No booking records found for this selection");
+        return;
+      }
+      const pdf = buildBookingExportPdf({
+        bookings,
+        title: selectedFilter?.label || "Booking export",
+        generatedAt: response.data.generatedAt || new Date(),
+      });
+      const blob = new Blob([pdf], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `booking-export-${exportFilter.toLowerCase()}-${moment().format("YYYYMMDD-HHmm")}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      message.success(`Downloaded ${bookings.length} booking record(s)`);
+    } catch (error) {
+      dispatch(HideLoading());
+      message.error(error.response?.data?.message || error.message);
+    }
+  };
 
   const loadTicketSuggestions = useCallback(async () => {
     try {
@@ -285,6 +437,20 @@ function AdminBookingManagement() {
                 prefix={<i className="ri-search-line bm-ticket-search-icon"></i>}
               />
             </AutoComplete>
+          </Card>
+
+          <Card className="bm-card mt-3" title="Download Report">
+            <Space direction="vertical" className="w-100" size={10}>
+              <Select
+                value={exportFilter}
+                onChange={setExportFilter}
+                options={exportFilterOptions}
+                className="w-100"
+              />
+              <Button type="primary" block onClick={downloadExportPdf}>
+                Download PDF
+              </Button>
+            </Space>
           </Card>
         </Col>
 

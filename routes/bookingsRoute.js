@@ -1265,6 +1265,75 @@ const findManagementBooking = async (ticketNumber, currentUser = null) => {
   return null;
 };
 
+const canExportManagementBookings = (user) => {
+  const authUser = serializeAuthUser(user);
+  return authUser?.role === "SUPER_ADMIN" || authUser?.role === "COMPANY_ADMIN";
+};
+
+const isExportCancelledBooking = (booking) =>
+  normalizeCode(booking.bookingStatus).includes("CANCEL") ||
+  normalizeCode(booking.status).includes("CANCEL");
+
+const bookingMatchesManagementExport = (booking, filter) => {
+  const normalized = normalizeManagementBooking(booking);
+  const selectedFilter = normalizeCode(filter || "WHATSAPP_CONFIRMED");
+  if (selectedFilter === "ALL") return true;
+  if (selectedFilter === "WHATSAPP_ALL") return normalized.source === "WHATSAPP";
+  if (selectedFilter === "WEB_ALL") return normalized.source === "WEB_APP";
+  if (selectedFilter === "WHATSAPP_CONFIRMED") {
+    return normalized.source === "WHATSAPP" && normalized.bookingStatus === "CONFIRMED";
+  }
+  if (selectedFilter === "WHATSAPP_CANCELLED") {
+    return normalized.source === "WHATSAPP" && isExportCancelledBooking(booking);
+  }
+  if (selectedFilter === "WHATSAPP_BOARDED") {
+    return normalized.source === "WHATSAPP" && normalized.bookingStatus === "BOARDED";
+  }
+  if (selectedFilter === "WHATSAPP_INVALID") {
+    return normalized.source === "WHATSAPP" && normalized.bookingStatus === "INVALID_PAYMENT";
+  }
+  if (selectedFilter === "WEB_CONFIRMED") {
+    return normalized.source === "WEB_APP" && normalized.bookingStatus === "CONFIRMED";
+  }
+  if (selectedFilter === "WEB_CANCELLED") {
+    return normalized.source === "WEB_APP" && isExportCancelledBooking(booking);
+  }
+  return normalized.source === "WHATSAPP" && normalized.bookingStatus === "CONFIRMED";
+};
+
+router.post("/management/export", authMiddleware, async (req, res) => {
+  try {
+    if (!canExportManagementBookings(req.user)) {
+      return res.status(403).send({ success: false, message: "Access denied", data: [] });
+    }
+
+    const filter = normalizeString(req.body.filter || "WHATSAPP_CONFIRMED");
+    const bookings = await bookingManagementPopulate(
+      Booking.find()
+        .sort({ createdAt: -1, _id: -1 })
+        .limit(1000)
+    );
+    const data = bookings
+      .filter((booking) => canAccessCompanyRecord(req.user, booking))
+      .filter((booking) => bookingMatchesManagementExport(booking, filter))
+      .map(normalizeManagementBooking);
+
+    res.status(200).send({
+      message: "Booking export fetched successfully",
+      success: true,
+      data,
+      generatedAt: new Date(),
+      filter,
+    });
+  } catch (error) {
+    res.status(500).send({
+      message: "Booking export failed",
+      success: false,
+      data: [],
+    });
+  }
+});
+
 const releaseManagedBookingSeats = async (booking) => {
   const seats = normalizeSeatNumbers(booking.seats);
   if (!seats.length) return;
