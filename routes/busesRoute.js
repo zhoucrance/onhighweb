@@ -4,6 +4,7 @@ const path = require("path");
 const mongoose = require("mongoose");
 const Bus = require("../models/busModel");
 const Booking = require("../models/bookingsModel");
+const Company = require("../models/companyModel");
 const Route = require("../models/routeModel");
 const RouteFare = require("../models/routeFareModel");
 const RouteStop = require("../models/routeStopModel");
@@ -14,6 +15,8 @@ const { createAuditNotification } = require("../utils/auditNotifications");
 
 const normalizeString = (value) => String(value || "").trim();
 const seatDebugLogPath = path.join(__dirname, "..", ".codex-logs", "seat-debug.jsonl");
+
+const escapeRegex = (value) => normalizeString(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const inactiveSeatBookingStatuses = [
   "payment_cancelled",
@@ -168,6 +171,31 @@ const tripsOverlap = (firstTrip, secondTrip) => {
   return first.start < second.end && second.start < first.end;
 };
 
+const resolveCompanyIdFromBusData = async (busData) => {
+  const existingCompanyId = getIdValue(busData.companyId);
+  if (existingCompanyId) return busData.companyId;
+
+  const candidates = [
+    busData.companyName,
+    busData.company,
+    busData.operatorName,
+    busData.operator,
+    busData.name,
+  ]
+    .map(normalizeString)
+    .filter(Boolean);
+
+  for (const candidate of candidates) {
+    const company = await Company.findOne({
+      companyName: new RegExp(`^${escapeRegex(candidate)}$`, "i"),
+      companyStatus: { $ne: "Inactive" },
+    }).select("_id companyName");
+    if (company) return company._id;
+  }
+
+  return null;
+};
+
 const validateTripAssignments = async (tripIds, currentUser, busId = null) => {
   const cleanTripIds = [...new Set((Array.isArray(tripIds) ? tripIds : []).filter(Boolean))];
   if (!cleanTripIds.length) return { trips: [] };
@@ -259,6 +287,9 @@ const normalizeBusData = async (payload, currentUser = null) => {
   const scopedCompanyId = getScopedCompanyId(currentUser);
   if (scopedCompanyId) {
     busData.companyId = scopedCompanyId;
+  }
+  if (!busData.companyId) {
+    busData.companyId = await resolveCompanyIdFromBusData(busData);
   }
 
   return busData;
