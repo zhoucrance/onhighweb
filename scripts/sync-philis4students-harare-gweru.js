@@ -17,6 +17,7 @@ const getArgValue = (name) => {
 };
 
 const isApply = process.argv.includes("--apply");
+const syncAllRoutes = process.argv.includes("--all-routes");
 const companyIdArgRaw = getArgValue("--companyId");
 const companyIdArg =
   companyIdArgRaw && companyIdArgRaw !== "PASTE_COMPANY_ID_HERE" ? companyIdArgRaw : "";
@@ -37,6 +38,15 @@ const preferredCompanyNameQuery = {
 };
 
 const exactCityRegex = (value) => new RegExp(`^${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
+const philisBusNameRegex = /phils|philis|philips/i;
+
+const uniqueObjectIds = (values) => {
+  const byId = new Map();
+  values.filter(Boolean).forEach((value) => {
+    byId.set(String(value), value);
+  });
+  return [...byId.values()];
+};
 
 const getFirstSchedule = (trip) =>
   [...(trip?.stopSchedule || [])]
@@ -120,25 +130,60 @@ const main = async () => {
     matchingCompanies.forEach((company) => console.log(`${company._id} ${company.companyName}`));
   }
 
-  const routeQuery = {
-    fromCity: exactCityRegex(fromCity),
-    $or: [
-      { toCity: { $regex: toPattern, $options: "i" } },
-      { routeName: { $regex: toPattern, $options: "i" } },
-    ],
-  };
-  const routes = await Route.find(routeQuery).select("routeName routeCode fromCity toCity companyId");
-  const routeIds = routes.map((route) => route._id);
-  const trips = routeIds.length
-    ? await Trip.find({ route: { $in: routeIds } }).select("tripCode route bus companyId stopSchedule departureTime arrivalTime scheduleStartDate journeyDate")
-    : [];
-  const busIdsFromTrips = trips.map((trip) => trip.bus).filter(Boolean);
-  const buses = routeIds.length || busIdsFromTrips.length
+  const routeQuery = syncAllRoutes
+    ? { companyId: targetCompany._id }
+    : {
+        fromCity: exactCityRegex(fromCity),
+        $or: [
+          { toCity: { $regex: toPattern, $options: "i" } },
+          { routeName: { $regex: toPattern, $options: "i" } },
+        ],
+      };
+  const seedRoutes = await Route.find(routeQuery).select("routeName routeCode fromCity toCity companyId");
+  const seedRouteIds = seedRoutes.map((route) => route._id);
+  const philisBuses = syncAllRoutes
     ? await Bus.find({
         $or: [
-          { route: { $in: routeIds } },
-          { _id: { $in: busIdsFromTrips } },
-          { from: exactCityRegex(fromCity), to: { $regex: toPattern, $options: "i" } },
+          { companyId: targetCompany._id },
+          { name: philisBusNameRegex },
+          { number: philisBusNameRegex },
+        ],
+      }).select("name number route companyId from to fare departure arrival journeyDate")
+    : [];
+  const philisBusIds = philisBuses.map((bus) => bus._id);
+  const seedTripClauses = [
+    ...(seedRouteIds.length ? [{ route: { $in: seedRouteIds } }] : []),
+    ...(philisBusIds.length ? [{ bus: { $in: philisBusIds } }] : []),
+    ...(syncAllRoutes ? [{ companyId: targetCompany._id }] : []),
+  ];
+  const seedTrips = seedTripClauses.length
+    ? await Trip.find({ $or: seedTripClauses })
+        .select("tripCode route bus companyId stopSchedule departureTime arrivalTime scheduleStartDate journeyDate")
+    : [];
+  const routeIds = uniqueObjectIds([
+    ...seedRouteIds,
+    ...philisBuses.map((bus) => bus.route),
+    ...seedTrips.map((trip) => trip.route),
+  ]);
+  const routes = routeIds.length
+    ? await Route.find({ _id: { $in: routeIds } }).select("routeName routeCode fromCity toCity companyId")
+    : [];
+  const trips = routeIds.length || philisBusIds.length
+    ? await Trip.find({
+        $or: [
+          ...(routeIds.length ? [{ route: { $in: routeIds } }] : []),
+          ...(philisBusIds.length ? [{ bus: { $in: philisBusIds } }] : []),
+        ],
+      }).select("tripCode route bus companyId stopSchedule departureTime arrivalTime scheduleStartDate journeyDate")
+    : [];
+  const busIdsFromTrips = trips.map((trip) => trip.bus).filter(Boolean);
+  const buses = routeIds.length || busIdsFromTrips.length || philisBuses.length
+    ? await Bus.find({
+        $or: [
+          ...(routeIds.length ? [{ route: { $in: routeIds } }] : []),
+          ...(busIdsFromTrips.length ? [{ _id: { $in: busIdsFromTrips } }] : []),
+          ...(!syncAllRoutes ? [{ from: exactCityRegex(fromCity), to: { $regex: toPattern, $options: "i" } }] : []),
+          ...(philisBusIds.length ? [{ _id: { $in: philisBusIds } }] : []),
         ],
       }).select("name number route companyId from to fare departure arrival journeyDate")
     : [];
@@ -147,6 +192,7 @@ const main = async () => {
   const routeRepairById = Object.fromEntries(routeRepairEntries);
 
   console.log(`Mode: ${isApply ? "APPLY" : "DRY RUN"}`);
+  console.log(`Scope: ${syncAllRoutes ? "all discovered Philips/Philis4Students routes" : `${fromCity} to ${toPattern}`}`);
   console.log(`Target company: ${targetCompany.companyName} (${targetCompany._id})`);
   console.log(`Routes matched: ${routes.length}`);
   routes.forEach((route) => {
@@ -162,12 +208,12 @@ const main = async () => {
   buses.forEach((bus) => console.log(`- bus ${bus._id} ${bus.name} ${bus.number || ""}`));
 
   if (!routes.length && !trips.length && !buses.length) {
-    console.log("No matching Harare to Gweru/MSU records found. Nothing to update.");
+    console.log("No matching records found. Nothing to update.");
     return;
   }
 
   if (!isApply) {
-    console.log("Dry run only. Re-run with --apply to update companyId fields.");
+    console.log("Dry run only. Re-run with --apply to update companyId, fare and time fields.");
     return;
   }
 
