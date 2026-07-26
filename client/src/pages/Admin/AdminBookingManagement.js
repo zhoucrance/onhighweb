@@ -21,6 +21,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useDispatch } from "react-redux";
 import { useReactToPrint } from "react-to-print";
 import PageTitle from "../../components/PageTitle";
+import ResponsiveAntTable from "../../components/ResponsiveAntTable";
 import { axiosInstance } from "../../helpers/axiosInstance";
 import { formatSeatNumbers } from "../../helpers/seatDisplay";
 import { HideLoading, ShowLoading } from "../../redux/alertsSlice";
@@ -51,6 +52,30 @@ const exportFilterOptions = [
   { value: "WEB_CANCELLED", label: "Web cancelled tickets" },
   { value: "ALL", label: "All booking records" },
 ];
+
+const bookingTabs = [
+  { key: "SEARCH", label: "Search Booking" },
+  { key: "PAID", label: "Paid Bookings" },
+  { key: "CANCELLED", label: "Cancelled Bookings" },
+  { key: "REFUNDED", label: "Refunded" },
+  { key: "COMPLETED", label: "Completed" },
+  { key: "VIEW", label: "View Bookings" },
+];
+
+const sourceFilterOptions = [
+  { value: "ALL", label: "All" },
+  { value: "WHATSAPP", label: "WhatsApp" },
+  { value: "OFFICE", label: "Office" },
+  { value: "WEB", label: "Direct/Web" },
+];
+
+const bookingMatchesSourceFilter = (booking, sourceFilter) => {
+  if (sourceFilter === "ALL") return true;
+  if (sourceFilter === "WHATSAPP") return booking.source === "WHATSAPP";
+  if (sourceFilter === "OFFICE") return booking.sourceLabel === "Office";
+  if (sourceFilter === "WEB") return booking.source === "WEB_APP" && booking.sourceLabel !== "Office";
+  return true;
+};
 
 const escapePdfText = (value) =>
   String(value ?? "-")
@@ -165,23 +190,53 @@ function AdminBookingManagement() {
   const [completion, setCompletion] = useState(null);
   const [printOpen, setPrintOpen] = useState(false);
   const [exportFilter, setExportFilter] = useState("WHATSAPP_CONFIRMED");
+  const [activeTab, setActiveTab] = useState("SEARCH");
+  const [sourceFilter, setSourceFilter] = useState("ALL");
+  const [dateFilters, setDateFilters] = useState({ startDate: "", endDate: "" });
+  const [bookingRows, setBookingRows] = useState([]);
+  const [tableLoading, setTableLoading] = useState(false);
   const ticketRef = useRef();
 
   const selectedRefundMethods = selectedBooking?.refundMethods || [];
   const sourceLabel = selectedBooking?.sourceLabel || (selectedBooking?.source === "WHATSAPP" ? "WhatsApp" : "Direct");
-  const ticketSearchOptions = ticketSuggestions.map((booking) => ({
-    value: booking.ticketNumber,
-    label: (
-      <div className="bm-search-option">
-        <strong>{booking.ticketNumber}</strong>
-        <span>{booking.sourceLabel || (booking.source === "WHATSAPP" ? "WhatsApp" : "Direct")}</span>
-      </div>
-    ),
-  }));
+  const ticketSearchOptions = ticketSuggestions
+    .filter((booking) => bookingMatchesSourceFilter(booking, sourceFilter))
+    .map((booking) => ({
+      value: booking.ticketNumber,
+      label: (
+        <div className="bm-search-option">
+          <strong>{booking.ticketNumber}</strong>
+          <span>{booking.sourceLabel || (booking.source === "WHATSAPP" ? "WhatsApp" : "Direct")}</span>
+        </div>
+      ),
+    }));
 
   const statusTag = (value) => (
     <Tag color={statusColors[value] || "default"}>{String(value || "-").replaceAll("_", " ")}</Tag>
   );
+
+  const loadBookingRows = useCallback(async () => {
+    if (activeTab === "SEARCH") return;
+
+    try {
+      setTableLoading(true);
+      const response = await axiosInstance.post("/api/bookings/management/list", {
+        tab: activeTab,
+        source: sourceFilter,
+        startDate: dateFilters.startDate,
+        endDate: dateFilters.endDate,
+      });
+      setTableLoading(false);
+      if (response.data.success) {
+        setBookingRows(response.data.data || []);
+      } else {
+        message.error(response.data.message);
+      }
+    } catch (error) {
+      setTableLoading(false);
+      message.error(error.response?.data?.message || error.message);
+    }
+  }, [activeTab, dateFilters.endDate, dateFilters.startDate, sourceFilter]);
 
   const downloadExportPdf = async () => {
     const selectedFilter = exportFilterOptions.find((option) => option.value === exportFilter);
@@ -272,6 +327,50 @@ function AdminBookingManagement() {
     }
   }, [dispatch, searchText]);
 
+  const bookingColumns = useMemo(() => [
+    {
+      title: "Ticket",
+      dataIndex: "ticketNumber",
+      render: (value, record) => (
+        <button className="bm-link-button" type="button" onClick={() => searchBooking(record.ticketNumber)}>
+          {value || "-"}
+        </button>
+      ),
+    },
+    {
+      title: "Passenger",
+      dataIndex: ["customer", "name"],
+    },
+    {
+      title: "Route",
+      render: (_, record) => `${record.trip?.from || "-"} to ${record.trip?.to || "-"}`,
+    },
+    {
+      title: "Date",
+      render: (_, record) => `${record.trip?.date || "-"} ${record.trip?.time || ""}`.trim(),
+    },
+    {
+      title: "Source",
+      render: (_, record) => <Tag color={record.source === "WHATSAPP" ? "green" : "blue"}>{record.sourceLabel || record.source}</Tag>,
+    },
+    {
+      title: "Payment",
+      render: (_, record) => `USD ${Number(record.payment?.amountPaid || 0).toFixed(2)}`,
+    },
+    {
+      title: "Status",
+      render: (_, record) => statusTag(record.bookingStatus),
+    },
+    {
+      title: "Action",
+      render: (_, record) => (
+        <Button size="small" onClick={() => searchBooking(record.ticketNumber)}>
+          View
+        </Button>
+      ),
+    },
+  ], [searchBooking]);
+
   useEffect(() => {
     const reference = String(searchText || "").trim();
     if (reference.length < 2) return undefined;
@@ -280,6 +379,10 @@ function AdminBookingManagement() {
     }, 450);
     return () => clearTimeout(timer);
   }, [searchText, searchBooking]);
+
+  useEffect(() => {
+    loadBookingRows();
+  }, [loadBookingRows]);
 
   const markAsBoarded = async () => {
     if (!selectedBooking) return;
@@ -295,6 +398,7 @@ function AdminBookingManagement() {
       if (response.data.success) {
         setSelectedBooking(response.data.data);
         setPrintOpen(true);
+        loadBookingRows();
         message.success(response.data.message);
       } else {
         message.error(response.data.message);
@@ -331,6 +435,7 @@ function AdminBookingManagement() {
         setSelectedBooking(response.data.data.booking);
         setCompletion(response.data.data);
         setCancelStep("completed");
+        loadBookingRows();
         message.success(response.data.message);
       } else {
         message.error(response.data.message);
@@ -402,41 +507,65 @@ function AdminBookingManagement() {
     <div className="booking-management-page">
       <PageTitle title="Booking Management" />
 
-      <div className="booking-flow-strip">
-        {["Search Booking", "View Booking", "Cancel Booking", "Choose Refund", "Confirm", "Completed"].map(
-          (step, index) => (
-            <div className="booking-flow-step" key={step}>
-              <span>{index + 1}</span>
-              <strong>{step}</strong>
-            </div>
-          )
-        )}
+      <div className="booking-flow-strip bm-tab-strip">
+        {bookingTabs.map((tab) => (
+          <button
+            className={`booking-flow-step bm-tab-button ${activeTab === tab.key ? "active" : ""}`}
+            key={tab.key}
+            type="button"
+            onClick={() => setActiveTab(tab.key)}
+          >
+            <strong>{tab.label}</strong>
+          </button>
+        ))}
       </div>
 
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={6}>
           <Card className="bm-card" title="Search Booking">
-            <AutoComplete
-              className="bm-ticket-search"
-              options={ticketSearchOptions}
-              value={searchText}
-              onChange={setSearchText}
-              onFocus={loadTicketSuggestions}
-              onSelect={(value) => searchBooking(value)}
-              onInputKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  searchBooking();
-                }
-              }}
-              filterOption={(inputValue, option) =>
-                String(option?.value || "").toLowerCase().includes(inputValue.toLowerCase())
-              }
-            >
-              <Input
-                placeholder="Ticket number or last 2 digits"
-                prefix={<i className="ri-search-line bm-ticket-search-icon"></i>}
-              />
-            </AutoComplete>
+            <Space direction="vertical" className="w-100" size={10}>
+              <div className="bm-search-row">
+                <Select
+                  value={sourceFilter}
+                  onChange={setSourceFilter}
+                  options={sourceFilterOptions}
+                  className="bm-source-filter"
+                />
+                <AutoComplete
+                  className="bm-ticket-search"
+                  options={ticketSearchOptions}
+                  value={searchText}
+                  onChange={setSearchText}
+                  onFocus={loadTicketSuggestions}
+                  onSelect={(value) => searchBooking(value)}
+                  onInputKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      searchBooking();
+                    }
+                  }}
+                  filterOption={(inputValue, option) =>
+                    String(option?.value || "").toLowerCase().includes(inputValue.toLowerCase())
+                  }
+                >
+                  <Input
+                    placeholder="Ticket number or last 2 digits"
+                    prefix={<i className="ri-search-line bm-ticket-search-icon"></i>}
+                  />
+                </AutoComplete>
+              </div>
+              <div className="bm-date-row">
+                <Input
+                  type="date"
+                  value={dateFilters.startDate}
+                  onChange={(event) => setDateFilters((current) => ({ ...current, startDate: event.target.value }))}
+                />
+                <Input
+                  type="date"
+                  value={dateFilters.endDate}
+                  onChange={(event) => setDateFilters((current) => ({ ...current, endDate: event.target.value }))}
+                />
+              </div>
+            </Space>
           </Card>
 
           <Card className="bm-card mt-3" title="Download Report">
@@ -455,11 +584,32 @@ function AdminBookingManagement() {
         </Col>
 
         <Col xs={24} lg={18}>
-          {!selectedBooking ? (
+          {activeTab !== "SEARCH" && (
+            <Card
+              className="bm-card bm-table-card"
+              title={
+                <Space>
+                  <span>{bookingTabs.find((tab) => tab.key === activeTab)?.label || "Bookings"}</span>
+                  <Tag>{bookingRows.length} record(s)</Tag>
+                </Space>
+              }
+            >
+              <ResponsiveAntTable
+                columns={bookingColumns}
+                dataSource={bookingRows}
+                loading={tableLoading}
+                rowKey="_id"
+                pagination={{ pageSize: 10 }}
+                mobileTitle={(record) => record.ticketNumber || record.customer?.name || "Booking"}
+              />
+            </Card>
+          )}
+
+          {!selectedBooking && activeTab === "SEARCH" ? (
             <Card className="bm-card bm-empty">
               <Empty description="Search by ticket number to view booking details" />
             </Card>
-          ) : (
+          ) : selectedBooking ? (
             <Space direction="vertical" size={16} className="w-100">
               <Card
                 className="bm-card"
@@ -714,7 +864,7 @@ function AdminBookingManagement() {
                 </Card>
               )}
             </Space>
-          )}
+          ) : null}
         </Col>
       </Row>
 

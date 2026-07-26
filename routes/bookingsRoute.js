@@ -1274,6 +1274,59 @@ const isExportCancelledBooking = (booking) =>
   normalizeCode(booking.bookingStatus).includes("CANCEL") ||
   normalizeCode(booking.status).includes("CANCEL");
 
+const isRefundedManagementBooking = (booking) => {
+  const statusText = [booking.bookingStatus, booking.status, booking.paymentStatus]
+    .map(normalizeCode)
+    .join(" ");
+  return statusText.includes("REFUND") || statusText.includes("CREDIT");
+};
+
+const bookingMatchesManagementTab = (booking, tab) => {
+  const normalized = normalizeManagementBooking(booking);
+  const selectedTab = normalizeCode(tab || "VIEW");
+  if (selectedTab === "VIEW" || selectedTab === "ALL") return true;
+  if (selectedTab === "PAID") return normalized.bookingStatus === "CONFIRMED";
+  if (selectedTab === "CANCELLED") return isExportCancelledBooking(booking);
+  if (selectedTab === "REFUNDED") return isRefundedManagementBooking(booking);
+  if (selectedTab === "COMPLETED") return normalized.bookingStatus === "BOARDED";
+  return true;
+};
+
+const bookingMatchesManagementSource = (booking, source) => {
+  const selectedSource = normalizeCode(source || "ALL");
+  if (selectedSource === "ALL") return true;
+  const normalized = normalizeManagementBooking(booking);
+  if (selectedSource === "WHATSAPP") return normalized.source === "WHATSAPP";
+  if (selectedSource === "OFFICE") return normalized.sourceLabel === "Office";
+  if (selectedSource === "WEB" || selectedSource === "DIRECT") {
+    return normalized.source === "WEB_APP" && normalized.sourceLabel !== "Office";
+  }
+  return true;
+};
+
+const parseDateOnly = (value) => {
+  const dateText = normalizeString(value).slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateText) ? dateText : "";
+};
+
+const bookingMatchesManagementDateRange = (booking, startDate, endDate) => {
+  const start = parseDateOnly(startDate);
+  const end = parseDateOnly(endDate);
+  if (!start && !end) return true;
+
+  const candidateDates = [
+    booking.travelDate,
+    booking.journeyDate,
+    booking.trip?.journeyDate,
+    booking.bus?.journeyDate,
+    booking.createdAt instanceof Date ? booking.createdAt.toISOString().slice(0, 10) : booking.createdAt,
+  ]
+    .map(parseDateOnly)
+    .filter(Boolean);
+
+  return candidateDates.some((dateText) => (!start || dateText >= start) && (!end || dateText <= end));
+};
+
 const bookingMatchesManagementExport = (booking, filter) => {
   const normalized = normalizeManagementBooking(booking);
   const selectedFilter = normalizeCode(filter || "WHATSAPP_CONFIRMED");
@@ -1373,6 +1426,40 @@ router.post("/management/recent", authMiddleware, async (req, res) => {
     res.status(500).send({
       message: "Recent bookings fetch failed",
       data: error,
+      success: false,
+    });
+  }
+});
+
+router.post("/management/list", authMiddleware, async (req, res) => {
+  try {
+    const tab = normalizeString(req.body.tab || "VIEW");
+    const source = normalizeString(req.body.source || "ALL");
+    const startDate = normalizeString(req.body.startDate);
+    const endDate = normalizeString(req.body.endDate);
+
+    const bookings = await bookingManagementPopulate(
+      Booking.find()
+        .sort({ createdAt: -1, _id: -1 })
+        .limit(1000)
+    );
+    const data = bookings
+      .filter((booking) => isManagementBookingVisible(booking) && canAccessCompanyRecord(req.user, booking))
+      .filter((booking) => bookingMatchesManagementTab(booking, tab))
+      .filter((booking) => bookingMatchesManagementSource(booking, source))
+      .filter((booking) => bookingMatchesManagementDateRange(booking, startDate, endDate))
+      .map(normalizeManagementBooking);
+
+    res.status(200).send({
+      message: "Booking list fetched successfully",
+      data,
+      success: true,
+      filters: { tab, source, startDate, endDate },
+    });
+  } catch (error) {
+    res.status(500).send({
+      message: "Booking list fetch failed",
+      data: [],
       success: false,
     });
   }

@@ -37,6 +37,26 @@
   font-size: 13px;
 }
 
+.bm-tab-strip {
+  align-items: stretch;
+}
+
+.bm-tab-button {
+  cursor: pointer;
+  justify-content: center;
+  text-align: center;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+
+.bm-tab-button.active {
+  border-color: #0b5cff;
+  box-shadow: 0 8px 20px rgba(11, 92, 255, 0.14);
+}
+
+.bm-tab-button.active strong {
+  color: #0b5cff;
+}
+
 .bm-card {
   border: 1px solid #dbe6f7;
   border-radius: 8px;
@@ -62,6 +82,22 @@
 
 .bm-ticket-search {
   width: 100%;
+}
+
+.bm-search-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.bm-source-filter {
+  flex: 0 0 112px;
+}
+
+.bm-date-row {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
 }
 
 .bm-ticket-search .ant-select-selector {
@@ -101,6 +137,20 @@
 
 .bm-ticket-heading {
   margin-bottom: 14px;
+}
+
+.bm-table-card {
+  margin-bottom: 16px;
+}
+
+.bm-link-button {
+  background: transparent;
+  border: 0;
+  color: #0b5cff;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0;
+  text-decoration: underline;
 }
 
 .bm-info-panel {
