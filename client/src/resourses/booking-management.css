@@ -84,7 +84,8 @@
   width: 100%;
 }
 
-.bm-search-row {
+.bm-search-title {
+  align-items: center;
   display: flex;
   gap: 8px;
   width: 100%;
@@ -92,6 +93,12 @@
 
 .bm-source-filter {
   flex: 0 0 112px;
+}
+
+.bm-search-title span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bm-date-row {

@@ -199,6 +199,7 @@ function AdminBookingManagement() {
 
   const selectedRefundMethods = selectedBooking?.refundMethods || [];
   const sourceLabel = selectedBooking?.sourceLabel || (selectedBooking?.source === "WHATSAPP" ? "WhatsApp" : "Direct");
+  const activeTabLabel = bookingTabs.find((tab) => tab.key === activeTab)?.label || "Search Booking";
   const ticketSearchOptions = ticketSuggestions
     .filter((booking) => bookingMatchesSourceFilter(booking, sourceFilter))
     .map((booking) => ({
@@ -522,37 +523,42 @@ function AdminBookingManagement() {
 
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={6}>
-          <Card className="bm-card" title="Search Booking">
-            <Space direction="vertical" className="w-100" size={10}>
-              <div className="bm-search-row">
+          <Card
+            className="bm-card"
+            title={
+              <div className="bm-search-title">
                 <Select
                   value={sourceFilter}
                   onChange={setSourceFilter}
                   options={sourceFilterOptions}
                   className="bm-source-filter"
                 />
-                <AutoComplete
-                  className="bm-ticket-search"
-                  options={ticketSearchOptions}
-                  value={searchText}
-                  onChange={setSearchText}
-                  onFocus={loadTicketSuggestions}
-                  onSelect={(value) => searchBooking(value)}
-                  onInputKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      searchBooking();
-                    }
-                  }}
-                  filterOption={(inputValue, option) =>
-                    String(option?.value || "").toLowerCase().includes(inputValue.toLowerCase())
-                  }
-                >
-                  <Input
-                    placeholder="Ticket number or last 2 digits"
-                    prefix={<i className="ri-search-line bm-ticket-search-icon"></i>}
-                  />
-                </AutoComplete>
+                <span>{activeTabLabel}</span>
               </div>
+            }
+          >
+            <Space direction="vertical" className="w-100" size={10}>
+              <AutoComplete
+                className="bm-ticket-search"
+                options={ticketSearchOptions}
+                value={searchText}
+                onChange={setSearchText}
+                onFocus={loadTicketSuggestions}
+                onSelect={(value) => searchBooking(value)}
+                onInputKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    searchBooking();
+                  }
+                }}
+                filterOption={(inputValue, option) =>
+                  String(option?.value || "").toLowerCase().includes(inputValue.toLowerCase())
+                }
+              >
+                <Input
+                  placeholder="Ticket number or last 2 digits"
+                  prefix={<i className="ri-search-line bm-ticket-search-icon"></i>}
+                />
+              </AutoComplete>
               <div className="bm-date-row">
                 <Input
                   type="date"
