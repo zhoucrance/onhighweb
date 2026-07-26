@@ -28,10 +28,14 @@ app.use("/api/helpdesk", helpDeskRoute);
 const path = require("path");
 if(process.env.NODE_ENV === "production")
 {
-    app.use(express.static("client/build"));
+    const clientDistPath = path.resolve(__dirname, "client", "dist");
+    const clientBuildPath = path.resolve(__dirname, "client", "build");
+    const clientStaticPath = require("fs").existsSync(clientDistPath) ? clientDistPath : clientBuildPath;
+
+    app.use(express.static(clientStaticPath));
   
     app.get("*", (req, res) => {
-        res.sendFile(path.resolve(__dirname, 'client/build/index.html'));
+        res.sendFile(path.resolve(clientStaticPath, "index.html"));
     });
 }
 
