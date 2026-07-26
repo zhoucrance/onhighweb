@@ -175,46 +175,6 @@
   color: #ffffff;
 }
 
-.bm-download-button {
-  align-items: center;
-  display: inline-flex;
-  justify-content: center;
-}
-
-.bm-download-glyph {
-  border: solid currentColor;
-  border-width: 0 2px 2px 0;
-  display: inline-block;
-  height: 12px;
-  position: relative;
-  transform: rotate(45deg) translateY(-2px);
-  width: 12px;
-}
-
-.bm-download-glyph::before {
-  background: currentColor;
-  content: "";
-  height: 12px;
-  left: 5px;
-  position: absolute;
-  top: -7px;
-  transform: rotate(-45deg);
-  width: 2px;
-}
-
-.bm-download-glyph::after {
-  border-bottom: 2px solid currentColor;
-  border-left: 2px solid currentColor;
-  border-right: 2px solid currentColor;
-  content: "";
-  height: 6px;
-  left: -9px;
-  position: absolute;
-  top: 7px;
-  transform: rotate(-45deg);
-  width: 18px;
-}
-
 .bm-link-button {
   background: transparent;
   border: 0;

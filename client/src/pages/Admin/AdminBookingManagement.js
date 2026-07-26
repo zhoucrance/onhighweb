@@ -16,6 +16,7 @@ import {
   Tag,
   message,
 } from "antd";
+import { DownloadOutlined } from "@ant-design/icons";
 import moment from "moment";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
@@ -363,12 +364,11 @@ function AdminBookingManagement() {
           <Button
             aria-label="Download booking PDF"
             className="bm-download-button"
+            icon={<DownloadOutlined />}
             size="small"
             title="Download booking PDF"
             onClick={() => downloadBookingPdf(record)}
-          >
-            <span className="bm-download-glyph" aria-hidden="true"></span>
-          </Button>
+          />
         </Space>
       ),
     },
@@ -590,12 +590,11 @@ function AdminBookingManagement() {
                     aria-label="Download filtered bookings PDF"
                     className="bm-header-download"
                     disabled={!bookingRows.length}
+                    icon={<DownloadOutlined />}
                     shape="circle"
                     title="Download filtered bookings PDF"
                     onClick={downloadFilteredBookingsPdf}
-                  >
-                    <span className="bm-download-glyph" aria-hidden="true"></span>
-                  </Button>
+                  />
                 </Space>
               }
             >
