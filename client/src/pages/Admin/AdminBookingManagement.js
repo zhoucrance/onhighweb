@@ -42,17 +42,6 @@ const statusColors = {
   NOT_BOARDED: "orange",
 };
 
-const exportFilterOptions = [
-  { value: "WHATSAPP_CONFIRMED", label: "WhatsApp booked tickets" },
-  { value: "WHATSAPP_CANCELLED", label: "WhatsApp cancelled tickets" },
-  { value: "WHATSAPP_BOARDED", label: "WhatsApp boarded tickets" },
-  { value: "WHATSAPP_INVALID", label: "WhatsApp failed/expired tickets" },
-  { value: "WHATSAPP_ALL", label: "All WhatsApp tickets" },
-  { value: "WEB_CONFIRMED", label: "Web booked tickets" },
-  { value: "WEB_CANCELLED", label: "Web cancelled tickets" },
-  { value: "ALL", label: "All booking records" },
-];
-
 const bookingTabs = [
   { key: "SEARCH", label: "Search Booking" },
   { key: "PAID", label: "Paid Bookings" },
@@ -189,7 +178,6 @@ function AdminBookingManagement() {
   const [cancellationDraft, setCancellationDraft] = useState(null);
   const [completion, setCompletion] = useState(null);
   const [printOpen, setPrintOpen] = useState(false);
-  const [exportFilter, setExportFilter] = useState("WHATSAPP_CONFIRMED");
   const [activeTab, setActiveTab] = useState("SEARCH");
   const [sourceFilter, setSourceFilter] = useState("ALL");
   const [dateFilters, setDateFilters] = useState({ startDate: "", endDate: "" });
@@ -239,42 +227,23 @@ function AdminBookingManagement() {
     }
   }, [activeTab, dateFilters.endDate, dateFilters.startDate, sourceFilter]);
 
-  const downloadExportPdf = async () => {
-    const selectedFilter = exportFilterOptions.find((option) => option.value === exportFilter);
-    try {
-      dispatch(ShowLoading());
-      const response = await axiosInstance.post("/api/bookings/management/export", {
-        filter: exportFilter,
-      });
-      dispatch(HideLoading());
-      if (!response.data.success) {
-        message.error(response.data.message);
-        return;
-      }
-      const bookings = response.data.data || [];
-      if (!bookings.length) {
-        message.warning("No booking records found for this selection");
-        return;
-      }
-      const pdf = buildBookingExportPdf({
-        bookings,
-        title: selectedFilter?.label || "Booking export",
-        generatedAt: response.data.generatedAt || new Date(),
-      });
-      const blob = new Blob([pdf], { type: "application/pdf" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `booking-export-${exportFilter.toLowerCase()}-${moment().format("YYYYMMDD-HHmm")}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      message.success(`Downloaded ${bookings.length} booking record(s)`);
-    } catch (error) {
-      dispatch(HideLoading());
-      message.error(error.response?.data?.message || error.message);
-    }
+  const downloadBookingPdf = (booking) => {
+    if (!booking) return;
+    const pdf = buildBookingExportPdf({
+      bookings: [booking],
+      title: `Booking record ${booking.ticketNumber || ""}`.trim(),
+      generatedAt: new Date(),
+    });
+    const blob = new Blob([pdf], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `booking-${String(booking.ticketNumber || booking._id || "record").toLowerCase()}-${moment().format("YYYYMMDD-HHmm")}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    message.success("Booking PDF downloaded");
   };
 
   const loadTicketSuggestions = useCallback(async () => {
@@ -365,9 +334,19 @@ function AdminBookingManagement() {
     {
       title: "Action",
       render: (_, record) => (
-        <Button size="small" onClick={() => searchBooking(record.ticketNumber)}>
-          View
-        </Button>
+        <Space>
+          <Button size="small" onClick={() => searchBooking(record.ticketNumber)}>
+            View
+          </Button>
+          <Button
+            aria-label="Download booking PDF"
+            size="small"
+            title="Download booking PDF"
+            onClick={() => downloadBookingPdf(record)}
+          >
+            <i className="ri-download-2-line"></i>
+          </Button>
+        </Space>
       ),
     },
   ], [searchBooking]);
@@ -527,13 +506,13 @@ function AdminBookingManagement() {
             className="bm-card"
             title={
               <div className="bm-search-title">
+                <span>{activeTabLabel}</span>
                 <Select
                   value={sourceFilter}
                   onChange={setSourceFilter}
                   options={sourceFilterOptions}
                   className="bm-source-filter"
                 />
-                <span>{activeTabLabel}</span>
               </div>
             }
           >
@@ -574,19 +553,6 @@ function AdminBookingManagement() {
             </Space>
           </Card>
 
-          <Card className="bm-card mt-3" title="Download Report">
-            <Space direction="vertical" className="w-100" size={10}>
-              <Select
-                value={exportFilter}
-                onChange={setExportFilter}
-                options={exportFilterOptions}
-                className="w-100"
-              />
-              <Button type="primary" block onClick={downloadExportPdf}>
-                Download PDF
-              </Button>
-            </Space>
-          </Card>
         </Col>
 
         <Col xs={24} lg={18}>
