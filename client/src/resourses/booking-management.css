@@ -151,6 +151,30 @@
   margin-bottom: 16px;
 }
 
+.bm-table-card .responsive-table-desktop {
+  overflow-x: auto;
+  padding-bottom: 10px;
+}
+
+.bm-table-card .ant-table {
+  min-width: 1080px;
+}
+
+.bm-header-download {
+  align-items: center;
+  border-color: #0b5cff;
+  color: #0b5cff;
+  display: inline-flex;
+  font-size: 18px;
+  justify-content: center;
+}
+
+.bm-header-download:not(:disabled):hover {
+  background: #0b5cff;
+  border-color: #0b5cff;
+  color: #ffffff;
+}
+
 .bm-link-button {
   background: transparent;
   border: 0;

@@ -246,6 +246,28 @@ function AdminBookingManagement() {
     message.success("Booking PDF downloaded");
   };
 
+  const downloadFilteredBookingsPdf = () => {
+    if (!bookingRows.length) {
+      message.warning("No booking records found for this filter");
+      return;
+    }
+    const pdf = buildBookingExportPdf({
+      bookings: bookingRows,
+      title: `${activeTabLabel} - ${sourceFilterOptions.find((option) => option.value === sourceFilter)?.label || "All"}`,
+      generatedAt: new Date(),
+    });
+    const blob = new Blob([pdf], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `bookings-${activeTab.toLowerCase()}-${sourceFilter.toLowerCase()}-${moment().format("YYYYMMDD-HHmm")}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    message.success(`Downloaded ${bookingRows.length} booking record(s)`);
+  };
+
   const loadTicketSuggestions = useCallback(async () => {
     try {
       const response = await axiosInstance.post("/api/bookings/management/recent", {});
@@ -563,6 +585,16 @@ function AdminBookingManagement() {
                 <Space>
                   <span>{bookingTabs.find((tab) => tab.key === activeTab)?.label || "Bookings"}</span>
                   <Tag>{bookingRows.length} record(s)</Tag>
+                  <Button
+                    aria-label="Download filtered bookings PDF"
+                    className="bm-header-download"
+                    disabled={!bookingRows.length}
+                    shape="circle"
+                    title="Download filtered bookings PDF"
+                    onClick={downloadFilteredBookingsPdf}
+                  >
+                    <i className="ri-download-cloud-2-line"></i>
+                  </Button>
                 </Space>
               }
             >
