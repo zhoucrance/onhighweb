@@ -362,11 +362,12 @@ function AdminBookingManagement() {
           </Button>
           <Button
             aria-label="Download booking PDF"
+            className="bm-download-button"
             size="small"
             title="Download booking PDF"
             onClick={() => downloadBookingPdf(record)}
           >
-            <i className="ri-download-2-line"></i>
+            <span className="bm-download-glyph" aria-hidden="true"></span>
           </Button>
         </Space>
       ),
@@ -593,7 +594,7 @@ function AdminBookingManagement() {
                     title="Download filtered bookings PDF"
                     onClick={downloadFilteredBookingsPdf}
                   >
-                    <i className="ri-download-cloud-2-line"></i>
+                    <span className="bm-download-glyph" aria-hidden="true"></span>
                   </Button>
                 </Space>
               }
