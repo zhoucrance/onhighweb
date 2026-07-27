@@ -1491,6 +1491,33 @@ const releaseManagedBookingSeats = async (booking) => {
   });
 };
 
+const getBookingReference = (booking) =>
+  normalizeString(booking.transactionId || booking.bookingReference || booking.booking_reference || booking.ticketNumber || booking.ticket_number);
+
+const syncPayOnBoardingFlowBooking = async (booking, update) => {
+  const bookingReference = getBookingReference(booking);
+  if (!bookingReference || !mongoose.connection?.db) return;
+
+  try {
+    await mongoose.connection.db.collection("flow_bookings").updateOne(
+      {
+        $or: [
+          { booking_reference: bookingReference },
+          { transactionId: bookingReference },
+          { ticket_number: normalizeString(booking.ticketNumber || booking.ticket_number) },
+          { ticketNumber: normalizeString(booking.ticketNumber || booking.ticket_number) },
+        ].filter((query) => Object.values(query)[0]),
+      },
+      { $set: update }
+    );
+  } catch (error) {
+    console.log("[pay-on-boarding] flow booking sync failed", {
+      bookingReference,
+      error: error.message,
+    });
+  }
+};
+
 router.post("/management/receive-payment", authMiddleware, async (req, res) => {
   try {
     const booking = await findManagementBooking(req.body.ticketNumber, req.user);
@@ -1511,6 +1538,18 @@ router.post("/management/receive-payment", authMiddleware, async (req, res) => {
     booking.processedByUserId = req.user._id;
     booking.boardedStatus = normalizeString(booking.boardedStatus || "NOT_BOARDED");
     await booking.save();
+    await syncPayOnBoardingFlowBooking(booking, {
+      status: "confirmed",
+      booking_status: "CONFIRMED",
+      payment_status: "paid",
+      payment_paid: true,
+      payment_method: "pay_on_boarding",
+      seat_status: "confirmed",
+      paid_at: booking.paymentReceivedAt.toISOString(),
+      payment_received_at: booking.paymentReceivedAt.toISOString(),
+      payment_received_by: String(req.user._id),
+      updated_at: new Date().toISOString(),
+    });
     await createAuditNotification(req.user, {
       companyId: booking.companyId || booking.bus?.companyId,
       module: "booking_management",
@@ -1551,6 +1590,19 @@ router.post("/management/cancel-reservation", authMiddleware, async (req, res) =
     booking.processedByUserId = req.user._id;
     await booking.save();
     await releaseManagedBookingSeats(booking);
+    await syncPayOnBoardingFlowBooking(booking, {
+      status: "cancelled",
+      booking_status: "CANCELLED",
+      payment_status: "cancelled",
+      payment_paid: false,
+      payment_method: "pay_on_boarding",
+      seat_status: "released",
+      cancel_reason: booking.cancelReason,
+      cancelled_at: booking.cancelledAt.toISOString(),
+      reservation_cancelled_at: booking.reservationCancelledAt.toISOString(),
+      cancelled_by: String(req.user._id),
+      updated_at: new Date().toISOString(),
+    });
     await createAuditNotification(req.user, {
       companyId: booking.companyId || booking.bus?.companyId,
       module: "booking_management",
