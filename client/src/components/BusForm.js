@@ -60,6 +60,7 @@ function BusForm({
   getData,
   selectedBus,
   setSelectedBus,
+  selectedCompanyId = "",
 }) {
   const dispatch = useDispatch();
   const [form] = Form.useForm();
@@ -69,11 +70,13 @@ function BusForm({
     ? {
         ...selectedBus,
         icon_color: selectedBus.icon_color || selectedBus.iconColor || "blue",
+        companyId: selectedBus.companyId?._id || selectedBus.companyId || selectedCompanyId || "",
       }
     : {
         type: "AC",
         status: "Active",
         icon_color: "blue",
+        companyId: selectedCompanyId || "",
       };
 
   const onFinish = async (values) => {
@@ -112,7 +115,9 @@ function BusForm({
         if (response.data.success) {
           const nextCompanies = response.data.data || [];
           setCompanies(nextCompanies);
-          if (nextCompanies.length === 1 && !form.getFieldValue("companyId")) {
+          if (selectedCompanyId && !form.getFieldValue("companyId")) {
+            form.setFieldValue("companyId", selectedCompanyId);
+          } else if (nextCompanies.length === 1 && !form.getFieldValue("companyId")) {
             form.setFieldValue("companyId", nextCompanies[0]._id);
           }
         }
@@ -121,7 +126,7 @@ function BusForm({
       }
     };
     loadCompanies();
-  }, [form, showBusForm]);
+  }, [form, selectedCompanyId, showBusForm]);
 
   useEffect(() => {
     form.setFieldsValue(initialValues);
@@ -158,6 +163,7 @@ function BusForm({
                   placeholder="Select company"
                   optionFilterProp="label"
                   options={companyOptions}
+                  disabled={Boolean(selectedCompanyId)}
                 />
               </Form.Item>
             </Col>

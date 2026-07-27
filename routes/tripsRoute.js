@@ -84,6 +84,8 @@ const getScopedCompanyId = (user) => {
   return authUser.companyId;
 };
 
+const userIsSuperAdmin = (user) => serializeAuthUser(user)?.role === "SUPER_ADMIN";
+
 const withCompanyScope = (user, query = {}) => {
   const companyId = getScopedCompanyId(user);
   return companyId ? { ...query, companyId } : query;
@@ -223,6 +225,12 @@ router.post("/save-trip", authMiddleware, async (req, res) => {
 
     const route = await Route.findById(req.body.route);
     if (!route) return res.status(200).send({ success: false, message: "Route not found" });
+    if (userIsSuperAdmin(req.user) && !route.companyId) {
+      return res.status(200).send({
+        success: false,
+        message: "Super admin must select a company-owned route before saving this trip.",
+      });
+    }
     const companyId = getScopedCompanyId(req.user);
     if (companyId && getIdValue(route.companyId) !== getIdValue(companyId)) {
       return res.status(403).send({ success: false, message: "Access denied" });

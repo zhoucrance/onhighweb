@@ -42,7 +42,8 @@ const notificationScopeForUser = (user) => {
   const authUser = serializeAuthUser(user);
   if (!authUser) return { _id: null };
   if (authUser.role === "SUPER_ADMIN") return {};
-  return { companyId: authUser.companyId || null };
+  if (!authUser.companyId) return { _id: null };
+  return { companyId: authUser.companyId };
 };
 
 const isNotificationUnread = (notification, user) => {

@@ -39,6 +39,8 @@ const getScopedCompanyId = (user) => {
   return authUser.companyId;
 };
 
+const userIsSuperAdmin = (user) => serializeAuthUser(user)?.role === "SUPER_ADMIN";
+
 const getSubmittedCompanyId = (user, value) => {
   const authUser = serializeAuthUser(user);
   const scopedCompanyId = getScopedCompanyId(user);
@@ -615,6 +617,12 @@ router.post("/save-route", authMiddleware, async (req, res) => {
     }
 
     const selectedCompanyId = getSubmittedCompanyId(req.user, companyId);
+    if (userIsSuperAdmin(req.user) && !selectedCompanyId) {
+      return res.status(200).send({
+        success: false,
+        message: "Super admin must select a company before saving this route.",
+      });
+    }
     if (_id) {
       const existingRouteForUpdate = await Route.findById(_id);
       if (!existingRouteForUpdate || !canAccessRoute(req.user, existingRouteForUpdate)) {

@@ -161,6 +161,7 @@ function RouteBasicInfoForm({
   status,
   setStatus,
   errors,
+  lockedCompanyId = "",
 }) {
   const companyOptions = companies.map((company) => ({
     value: company._id,
@@ -186,6 +187,7 @@ function RouteBasicInfoForm({
               optionFilterProp="label"
               placeholder="Select company"
               showSearch
+              disabled={Boolean(lockedCompanyId)}
             />
             {errors.companyId && <p className="route-error">{errors.companyId}</p>}
           </Col>
@@ -755,6 +757,7 @@ function RouteForm({
   selectedRoute,
   setSelectedRoute,
   getData,
+  selectedCompanyId = "",
 }) {
   const dispatch = useDispatch();
   const [routeName, setRouteName] = useState("");
@@ -783,7 +786,9 @@ function RouteForm({
         if (response.data.success) {
           const nextCompanies = response.data.data || [];
           setCompanies(nextCompanies);
-          if (nextCompanies.length === 1) {
+          if (selectedCompanyId) {
+            setCompanyId(selectedCompanyId);
+          } else if (nextCompanies.length === 1) {
             setCompanyId(nextCompanies[0]._id);
           }
         }
@@ -792,7 +797,7 @@ function RouteForm({
       }
     };
     loadCompanies();
-  }, [showRouteForm]);
+  }, [selectedCompanyId, showRouteForm]);
 
   useEffect(() => {
     if (!selectedRoute) return;
@@ -988,7 +993,7 @@ function RouteForm({
 
     if (!routeName.trim()) nextErrors.routeName = "Route name is required";
     if (!routeCode.trim()) nextErrors.routeCode = "Route code is required";
-    if (companies.length > 1 && !companyId) nextErrors.companyId = "Company is required";
+    if ((companies.length > 1 || selectedCompanyId) && !companyId) nextErrors.companyId = "Company is required";
     if (!startCity.trim()) nextErrors.startCity = "Start city is required";
     if (!endCity.trim()) nextErrors.endCity = "End city is required";
     if (cleanStops.length < 2) nextErrors.stops = "Add at least two stops";
@@ -1159,6 +1164,7 @@ function RouteForm({
         status={status}
         setStatus={setStatus}
         errors={errors}
+        lockedCompanyId={selectedCompanyId}
       />
 
       <RouteSummaryCard

@@ -1,15 +1,21 @@
 import { message, Modal, Select } from "antd";
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
 import RouteForm from "../../components/RouteForm";
 import PageTitle from "../../components/PageTitle";
 import ResponsiveAntTable from "../../components/ResponsiveAntTable";
 import { axiosInstance } from "../../helpers/axiosInstance";
+import { isSuperAdmin } from "../../helpers/permissions";
 import { HideLoading, ShowLoading } from "../../redux/alertsSlice";
 
 function AdminRoutes() {
   const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.users);
+  const superAdmin = isSuperAdmin(user);
   const [routes, setRoutes] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [companyFilter, setCompanyFilter] = useState("");
   const [routeFilter, setRouteFilter] = useState("");
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [showRouteForm, setShowRouteForm] = useState(false);
@@ -20,6 +26,21 @@ function AdminRoutes() {
       return;
     }
     message.error(error.response?.data?.message || error.message);
+  };
+
+  const getCompanies = async () => {
+    try {
+      const response = await axiosInstance.get("/api/companies");
+      if (response.data.success) {
+        const nextCompanies = response.data.data || [];
+        setCompanies(nextCompanies);
+        if (!superAdmin && nextCompanies.length === 1) {
+          setCompanyFilter(nextCompanies[0]._id);
+        }
+      }
+    } catch (error) {
+      message.error(error.response?.data?.message || "Failed to load companies.");
+    }
   };
 
   const getRoutes = async () => {
@@ -59,6 +80,7 @@ function AdminRoutes() {
 
   useEffect(() => {
     getRoutes();
+    getCompanies();
   }, []);
 
   const columns = [
@@ -126,19 +148,47 @@ function AdminRoutes() {
   ];
 
   const filteredRoutes = useMemo(() => {
-    if (!routeFilter) return routes;
-    return routes.filter((route) => route._id === routeFilter);
-  }, [routeFilter, routes]);
+    return routes.filter((route) => {
+      const routeCompanyId = String(route.companyId?._id || route.companyId || "");
+      const matchesCompany = !companyFilter || routeCompanyId === String(companyFilter);
+      const matchesRoute = !routeFilter || route._id === routeFilter;
+      return matchesCompany && matchesRoute;
+    });
+  }, [companyFilter, routeFilter, routes]);
+
+  const openAddRoute = () => {
+    if (superAdmin && !companyFilter) {
+      message.error("Select a company first.");
+      return;
+    }
+    setSelectedRoute(null);
+    setShowRouteForm(true);
+  };
 
   return (
     <div>
       <div className="d-flex justify-content-between my-2">
         <PageTitle title="Routes" />
-        <button className="primary-btn" onClick={() => setShowRouteForm(true)}>
+        <button className="primary-btn" onClick={openAddRoute}>
           Add Route
         </button>
       </div>
       <div className="admin-filter-bar">
+        <Select
+          allowClear={superAdmin}
+          showSearch
+          placeholder="Select company first"
+          value={companyFilter || undefined}
+          optionFilterProp="label"
+          onChange={(value) => {
+            setCompanyFilter(value || "");
+            setRouteFilter("");
+          }}
+          options={companies.map((company) => ({
+            value: company._id,
+            label: company.companyName,
+          }))}
+        />
         <Select
           allowClear
           showSearch
@@ -166,6 +216,7 @@ function AdminRoutes() {
           selectedRoute={selectedRoute}
           setSelectedRoute={setSelectedRoute}
           getData={getRoutes}
+          selectedCompanyId={selectedRoute ? "" : companyFilter}
         />
       )}
     </div>

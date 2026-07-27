@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Form, Modal, Select, Space, Tag, message } from "antd";
+import { useSelector } from "react-redux";
 import PageTitle from "../../components/PageTitle";
 import ResponsiveAntTable from "../../components/ResponsiveAntTable";
 import { axiosInstance } from "../../helpers/axiosInstance";
+import { isSuperAdmin } from "../../helpers/permissions";
 
 const TRIP_STATUSES = ["Yet To Start", "In Progress", "Completed"];
 const OPERATING_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -123,12 +125,15 @@ const buildStopScheduleFromRoute = (route, existingSchedule = [], departureTime 
 const getRecordCompanyId = (record) => String(record?.companyId?._id || record?.companyId || "");
 
 function AdminTrips() {
+  const { user } = useSelector((state) => state.users);
+  const superAdmin = isSuperAdmin(user);
   const [trips, setTrips] = useState([]);
   const [routes, setRoutes] = useState([]);
   const [buses, setBuses] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [showTripForm, setShowTripForm] = useState(false);
   const [editingTrip, setEditingTrip] = useState(null);
+  const [companyFilter, setCompanyFilter] = useState("");
   const [routeFilter, setRouteFilter] = useState("");
   const [selectedOperatingDays, setSelectedOperatingDays] = useState([]);
   const [form] = Form.useForm();
@@ -171,7 +176,13 @@ function AdminTrips() {
   const getCompanies = async () => {
     try {
       const companiesResponse = await axiosInstance.get("/api/companies");
-      if (companiesResponse.data.success) setCompanies(companiesResponse.data.data || []);
+      if (companiesResponse.data.success) {
+        const nextCompanies = companiesResponse.data.data || [];
+        setCompanies(nextCompanies);
+        if (!superAdmin && nextCompanies.length === 1) {
+          setCompanyFilter(nextCompanies[0]._id);
+        }
+      }
     } catch (error) {
       message.error(error.response?.data?.message || "Failed to load company payment methods.");
     }
@@ -185,11 +196,17 @@ function AdminTrips() {
   }, []);
 
   const routeOptions = useMemo(
-    () => routes.map((route) => ({
-      value: route._id,
-      label: route.routeName || `${route.fromCity} to ${route.toCity}`,
-    })),
-    [routes]
+    () =>
+      routes
+        .filter((route) => {
+          const routeCompanyId = getRecordCompanyId(route);
+          return !companyFilter || routeCompanyId === String(companyFilter);
+        })
+        .map((route) => ({
+          value: route._id,
+          label: route.routeName || `${route.fromCity} to ${route.toCity}`,
+        })),
+    [companyFilter, routes]
   );
 
   const selectedRoute = useMemo(
@@ -211,7 +228,9 @@ function AdminTrips() {
       buses
         .filter((bus) => {
           const busCompanyId = getRecordCompanyId(bus);
-          return !selectedRouteCompanyId || !busCompanyId || busCompanyId === selectedRouteCompanyId;
+          const matchesSelectedCompany = !companyFilter || busCompanyId === String(companyFilter);
+          const matchesRouteCompany = !selectedRouteCompanyId || !busCompanyId || busCompanyId === selectedRouteCompanyId;
+          return matchesSelectedCompany && matchesRouteCompany;
         })
         .map((bus) => ({
           value: bus._id,
@@ -242,11 +261,19 @@ function AdminTrips() {
   }, [form, selectedCompanyPaymentMethods, selectedRouteCompanyId, showTripForm]);
 
   const filteredTrips = useMemo(() => {
-    if (!routeFilter) return trips;
-    return trips.filter((trip) => String(trip.route?._id || trip.route || "") === String(routeFilter));
-  }, [routeFilter, trips]);
+    return trips.filter((trip) => {
+      const tripCompanyId = String(trip.companyId?._id || trip.companyId || trip.route?.companyId || trip.bus?.companyId || "");
+      const matchesCompany = !companyFilter || tripCompanyId === String(companyFilter);
+      const matchesRoute = !routeFilter || String(trip.route?._id || trip.route || "") === String(routeFilter);
+      return matchesCompany && matchesRoute;
+    });
+  }, [companyFilter, routeFilter, trips]);
 
   const openTripForm = (trip = null) => {
+    if (!trip && superAdmin && !companyFilter) {
+      message.error("Select a company first.");
+      return;
+    }
     setEditingTrip(trip);
     const tripRouteId = trip?.route?._id || trip?.route || "";
     const tripRoute = routes.find((route) => String(route._id) === String(tripRouteId));
@@ -286,6 +313,13 @@ function AdminTrips() {
     setShowTripForm(false);
     setSelectedOperatingDays([]);
     form.resetFields();
+  };
+
+  const changeCompanyFilter = (value) => {
+    setCompanyFilter(value || "");
+    setRouteFilter("");
+    if (!showTripForm || editingTrip) return;
+    form.setFieldsValue({ route: "", bus: "", acceptedPaymentMethods: ["EcoCash", "Card Payment"], stopSchedule: [] });
   };
 
   const saveTrip = async () => {
@@ -403,6 +437,18 @@ function AdminTrips() {
 
       <div className="admin-filter-bar">
         <Select
+          allowClear={superAdmin}
+          showSearch
+          placeholder="Select company first"
+          value={companyFilter || undefined}
+          optionFilterProp="label"
+          onChange={changeCompanyFilter}
+          options={companies.map((company) => ({
+            value: company._id,
+            label: company.companyName,
+          }))}
+        />
+        <Select
           allowClear
           showSearch
           placeholder="Filter by route"
@@ -448,7 +494,7 @@ function AdminTrips() {
                 <input placeholder="e.g. Harare - Joburg Morning" />
               </Form.Item>
               <Form.Item name="route" label="Route" rules={[{ required: true, message: "Select a route" }]}>
-                <Select showSearch placeholder="Select route" optionFilterProp="label" options={routeOptions} />
+                <Select showSearch placeholder="Select route" optionFilterProp="label" options={routeOptions} disabled={superAdmin && !companyFilter} />
               </Form.Item>
               <Form.Item name="bus" label="Bus" rules={[{ required: true, message: "Select a bus" }]}>
                 <Select showSearch placeholder="Assign bus to this trip" optionFilterProp="label" options={busOptions} />

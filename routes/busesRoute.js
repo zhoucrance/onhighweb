@@ -110,6 +110,8 @@ const getScopedCompanyId = (user) => {
   return authUser.companyId;
 };
 
+const userIsSuperAdmin = (user) => serializeAuthUser(user)?.role === "SUPER_ADMIN";
+
 const withCompanyScope = (user, query = {}) => {
   const companyId = getScopedCompanyId(user);
   const conductorBusId = getAssignedConductorBusId(user);
@@ -294,6 +296,9 @@ const normalizeBusData = async (payload, currentUser = null) => {
   }
   if (!busData.companyId) {
     busData.companyId = await resolveCompanyIdFromBusData(busData);
+  }
+  if (userIsSuperAdmin(currentUser) && !busData.companyId) {
+    throw new Error("Super admin must select a company before saving this bus.");
   }
 
   return busData;

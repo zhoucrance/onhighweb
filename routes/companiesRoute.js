@@ -2,6 +2,7 @@ const router = require("express").Router();
 const Company = require("../models/companyModel");
 const authMiddleware = require("../middlewares/authMiddleware");
 const { requireSuperAdmin, serializeAuthUser } = require("../middlewares/authorizationMiddleware");
+const { createAuditNotification } = require("../utils/auditNotifications");
 
 const normalizeString = (value) => String(value || "").trim();
 const paymentMethodOptions = ["EcoCash", "Card Payment", "Pay on Boarding"];
@@ -45,6 +46,15 @@ router.post("/", authMiddleware, requireSuperAdmin, async (req, res) => {
       companyStatus: req.body.companyStatus || "Active",
       createdBy: req.user._id,
     }).save();
+
+    await createAuditNotification(req.user, {
+      companyId: company._id,
+      module: "companies",
+      action: "created",
+      entityType: "company",
+      entityId: company._id,
+      entityLabel: company.companyName,
+    });
 
     res.send({
       message: "Company created successfully",
@@ -108,6 +118,17 @@ router.patch("/pesepay-settings/:id", authMiddleware, requireSuperAdmin, async (
       { new: true }
     );
     if (!company) return res.status(404).send({ message: "Company not found", success: false, data: null });
+
+    await createAuditNotification(req.user, {
+      companyId: company._id,
+      module: "companies",
+      action: "updated Pesepay keys for",
+      entityType: "company",
+      entityId: company._id,
+      entityLabel: company.companyName,
+      message: `${req.user.fullName || req.user.name || req.user.email || "A user"} updated Pesepay keys for ${company.companyName}.`,
+    });
+
     res.send({
       message: "Pesepay keys saved successfully",
       success: true,
@@ -139,6 +160,17 @@ router.patch("/payment-methods/:id", authMiddleware, requireSuperAdmin, async (r
       { new: true }
     );
     if (!company) return res.status(404).send({ message: "Company not found", success: false, data: null });
+
+    await createAuditNotification(req.user, {
+      companyId: company._id,
+      module: "companies",
+      action: "updated payment methods for",
+      entityType: "company",
+      entityId: company._id,
+      entityLabel: company.companyName,
+      message: `${req.user.fullName || req.user.name || req.user.email || "A user"} updated payment methods for ${company.companyName}: ${enabledPaymentMethods.join(", ")}.`,
+    });
+
     res.send({
       message: "Payment methods saved successfully",
       success: true,
@@ -175,6 +207,16 @@ router.patch("/:id", authMiddleware, requireSuperAdmin, async (req, res) => {
       { new: true }
     );
     if (!company) return res.status(404).send({ message: "Company not found", success: false, data: null });
+
+    await createAuditNotification(req.user, {
+      companyId: company._id,
+      module: "companies",
+      action: "updated",
+      entityType: "company",
+      entityId: company._id,
+      entityLabel: company.companyName,
+    });
+
     res.send({ message: "Company updated successfully", success: true, data: withoutPesepaySecrets(company) });
   } catch (error) {
     res.status(500).send({ message: error.message, success: false, data: null });

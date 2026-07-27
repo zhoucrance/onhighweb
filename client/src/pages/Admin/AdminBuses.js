@@ -1,10 +1,12 @@
 import { message, Modal, Select } from "antd";
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
 import BusForm from "../../components/BusForm";
 import PageTitle from "../../components/PageTitle";
 import ResponsiveAntTable from "../../components/ResponsiveAntTable";
 import { axiosInstance } from "../../helpers/axiosInstance";
+import { isSuperAdmin } from "../../helpers/permissions";
 import { HideLoading, ShowLoading } from "../../redux/alertsSlice";
 
 const busColorStyles = {
@@ -42,8 +44,12 @@ const busColorStyles = {
 
 function AdminBuses() {
   const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.users);
+  const superAdmin = isSuperAdmin(user);
   const [showBusForm, setShowBusForm] = useState(false);
   const [buses, setBuses] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [companyFilter, setCompanyFilter] = useState("");
   const [busFilter, setBusFilter] = useState("");
   const [selectedBus, setSelectedBus] = useState(null);
   const getBuses = async () => {
@@ -59,6 +65,21 @@ function AdminBuses() {
     } catch (error) {
       dispatch(HideLoading());
       message.error(error.message);
+    }
+  };
+
+  const getCompanies = async () => {
+    try {
+      const response = await axiosInstance.get("/api/companies");
+      if (response.data.success) {
+        const nextCompanies = response.data.data || [];
+        setCompanies(nextCompanies);
+        if (!superAdmin && nextCompanies.length === 1) {
+          setCompanyFilter(nextCompanies[0]._id);
+        }
+      }
+    } catch (error) {
+      message.error(error.response?.data?.message || "Failed to load companies.");
     }
   };
 
@@ -161,23 +182,53 @@ function AdminBuses() {
   ];
 
   const filteredBuses = useMemo(() => {
-    if (!busFilter) return buses;
-    return buses.filter((bus) => bus._id === busFilter);
-  }, [busFilter, buses]);
+    return buses.filter((bus) => {
+      const busCompanyId = String(bus.companyId?._id || bus.companyId || "");
+      const matchesCompany = !companyFilter || busCompanyId === String(companyFilter);
+      const matchesBus = !busFilter || bus._id === busFilter;
+      return matchesCompany && matchesBus;
+    });
+  }, [busFilter, buses, companyFilter]);
 
   useEffect(() => {
     getBuses();
+    getCompanies();
   }, []);
+
+  const openAddBus = () => {
+    if (superAdmin && !companyFilter) {
+      message.error("Select a company first.");
+      return;
+    }
+    setSelectedBus(null);
+    setShowBusForm(true);
+  };
+
   return (
     <div>
       <div className="d-flex justify-content-between my-2">
         <PageTitle title="Buses" />
-        <button className="primary-btn" onClick={() => setShowBusForm(true)}>
+        <button className="primary-btn" onClick={openAddBus}>
           Add Bus
         </button>
       </div>
 
       <div className="admin-filter-bar">
+        <Select
+          allowClear={superAdmin}
+          showSearch
+          placeholder="Select company first"
+          value={companyFilter || undefined}
+          optionFilterProp="label"
+          onChange={(value) => {
+            setCompanyFilter(value || "");
+            setBusFilter("");
+          }}
+          options={companies.map((company) => ({
+            value: company._id,
+            label: company.companyName,
+          }))}
+        />
         <Select
           allowClear
           showSearch
@@ -208,6 +259,7 @@ function AdminBuses() {
           selectedBus={selectedBus}
           setSelectedBus={setSelectedBus}
           getData={getBuses}
+          selectedCompanyId={selectedBus ? "" : companyFilter}
         />
       )}
     </div>
