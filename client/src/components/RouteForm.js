@@ -253,15 +253,6 @@ function StopRow({ stop, index, totalStops, errors, onChange, onRemove }) {
       </td>
       <td>
         <select
-          value={stop.travelScope || "Local"}
-          onChange={(event) => onChange(index, "travelScope", event.target.value)}
-        >
-          <option value="Local">Local</option>
-          <option value="International">International</option>
-        </select>
-      </td>
-      <td>
-        <select
           value={stop.isActive === false ? "Inactive" : "Active"}
           onChange={(event) => onChange(index, "isActive", event.target.value === "Active")}
         >
@@ -310,6 +301,16 @@ function StopRow({ stop, index, totalStops, errors, onChange, onRemove }) {
         )}
       </td>
       <td>
+        <select
+          value={stop.travelScope || "Local"}
+          onChange={(event) => onChange(index, "travelScope", event.target.value)}
+          aria-label={`${stop.cityName || `Stop ${index + 1}`} route type`}
+        >
+          <option value="Local">Local</option>
+          <option value="International">International</option>
+        </select>
+      </td>
+      <td>
         <button
           type="button"
           className="route-stop-delete-button"
@@ -341,11 +342,11 @@ function RouteStopsTable({ stops, errors, setStopValue, addStop, removeStop }) {
             <tr>
               <th>Order</th>
               <th>City / Stop</th>
-              <th>Type</th>
               <th>Status</th>
               <th>Minutes Between Stops</th>
               <th>Stop Minutes</th>
               <th>Boarding Points</th>
+              <th>City Type</th>
               <th>Actions</th>
             </tr>
           </thead>
