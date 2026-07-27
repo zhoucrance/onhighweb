@@ -29,6 +29,7 @@ const emptyReturnSchedule = () => ({
 const emptyStop = (index) => ({
   clientId: makeStopId(),
   cityName: "",
+  travelScope: "Local",
   boardingPoints: [],
   arrivalTime: "",
   departureTime: "",
@@ -252,6 +253,15 @@ function StopRow({ stop, index, totalStops, errors, onChange, onRemove }) {
       </td>
       <td>
         <select
+          value={stop.travelScope || "Local"}
+          onChange={(event) => onChange(index, "travelScope", event.target.value)}
+        >
+          <option value="Local">Local</option>
+          <option value="International">International</option>
+        </select>
+      </td>
+      <td>
+        <select
           value={stop.isActive === false ? "Inactive" : "Active"}
           onChange={(event) => onChange(index, "isActive", event.target.value === "Active")}
         >
@@ -331,6 +341,7 @@ function RouteStopsTable({ stops, errors, setStopValue, addStop, removeStop }) {
             <tr>
               <th>Order</th>
               <th>City / Stop</th>
+              <th>Type</th>
               <th>Status</th>
               <th>Minutes Between Stops</th>
               <th>Stop Minutes</th>
@@ -805,6 +816,7 @@ function RouteForm({
     const routeStops = (selectedRoute.stops || []).map((stop, index) => ({
       clientId: String(stop._id || `stop-${index}`),
       cityName: stop.cityName || "",
+      travelScope: stop.travelScope || "Local",
       boardingPoints:
         stop.boardingPoints?.length
           ? stop.boardingPoints
@@ -849,6 +861,7 @@ function RouteForm({
         return {
           ...stop,
           cityName: isFirst ? startCity : isLast ? endCity : stop.cityName,
+          travelScope: stop.travelScope || "Local",
           stopOrder: index + 1,
         };
       }),
@@ -984,6 +997,7 @@ function RouteForm({
     const cleanStops = orderedStops.map((stop, index) => ({
       ...stop,
       cityName: stop.cityName.trim(),
+      travelScope: stop.travelScope === "International" ? "International" : "Local",
       arrivalTime: "",
       departureTime: "",
       boardingPoints: (stop.boardingPoints || []).map((point) => point.trim()).filter(Boolean),

@@ -107,6 +107,7 @@ const buildStopScheduleFromRoute = (route, existingSchedule = [], departureTime 
     return {
       stopId: stop._id,
       cityName: stop.cityName || "",
+      travelScope: stop.travelScope || "Local",
       stopOrder: Number(stop.stopOrder || index + 1),
       arrivalTime: arrivalClock.time,
       arrivalDisplay: arrivalClock.display,

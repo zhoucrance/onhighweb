@@ -26,6 +26,8 @@ const journeyDateQuery = (value) => ({
 });
 
 const normalizeString = (value) => String(value || "").trim();
+const normalizeTravelScope = (value) =>
+  normalizeString(value).toLowerCase() === "international" ? "International" : "Local";
 const seatDebugLogPath = path.join(__dirname, "..", ".codex-logs", "seat-debug.jsonl");
 const getCompanyPaymentMethods = async (companyId) => {
   if (!companyId) return ["EcoCash", "Card Payment"];
@@ -326,6 +328,10 @@ const formatTripResult = async (trip, route, fromStop, toStop, fare, travelDate 
     drop_off_point: toStop.boardingPoint,
     dropOffPoints: Array.isArray(toStop.boardingPoints) ? toStop.boardingPoints.filter(Boolean) : [],
     drop_off_points: Array.isArray(toStop.boardingPoints) ? toStop.boardingPoints.filter(Boolean) : [],
+    fromTravelScope: normalizeTravelScope(fromStop.travelScope),
+    toTravelScope: normalizeTravelScope(toStop.travelScope),
+    from_travel_scope: normalizeTravelScope(fromStop.travelScope),
+    to_travel_scope: normalizeTravelScope(toStop.travelScope),
     fare: fare ? fare.fare : 0,
     currency: route.fareCurrency || bus.currency || "USD",
     fareCurrency: route.fareCurrency || bus.currency || "USD",
@@ -505,6 +511,7 @@ router.post("/save-route", authMiddleware, async (req, res) => {
         distanceFromPrevious: normalizeString(stop.distanceFromPrevious),
         durationFromPrevious: normalizeString(stop.durationFromPrevious),
         stopMinutes: index === 0 || index === stops.length - 1 ? "0" : normalizeString(stop.stopMinutes || "0"),
+        travelScope: normalizeTravelScope(stop.travelScope),
         stopOrder: Number(stop.stopOrder || index + 1),
         isActive: stop.isActive !== false,
         clientId: stop.clientId || String(index),
@@ -691,6 +698,7 @@ router.post("/save-route", authMiddleware, async (req, res) => {
         departureTime: stop.departureTime,
         boardingPoint: stop.boardingPoints[0] || stop.boardingPoint,
         boardingPoints: stop.boardingPoints,
+        travelScope: stop.travelScope,
         distanceFromPrevious: stop.distanceFromPrevious,
         durationFromPrevious: stop.durationFromPrevious,
         stopMinutes: stop.stopMinutes,

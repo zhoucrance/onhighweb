@@ -31,6 +31,11 @@ const routeStopSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    travelScope: {
+      type: String,
+      enum: ["Local", "International"],
+      default: "Local",
+    },
     distanceFromPrevious: {
       type: String,
       default: "",
