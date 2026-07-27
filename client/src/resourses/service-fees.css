@@ -67,6 +67,17 @@
   grid-template-columns: minmax(420px, 760px);
 }
 
+.service-fee-checkboxes {
+  display: grid;
+  gap: 10px;
+}
+
+.service-fee-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .service-fee-panel {
   padding: 18px;
 }

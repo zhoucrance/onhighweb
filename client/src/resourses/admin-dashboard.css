@@ -3,6 +3,27 @@
   padding-bottom: 24px;
 }
 
+.dash-reserved-summary {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px;
+  background: #f8fafc;
+}
+
+.dash-reserved-summary span,
+.dash-subtitle {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.dash-reserved-summary strong {
+  color: #0f172a;
+  display: block;
+  font-size: 24px;
+}
+
 .dash-header {
   align-items: flex-start;
   display: flex;

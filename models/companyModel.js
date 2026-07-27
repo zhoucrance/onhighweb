@@ -31,6 +31,19 @@ const companySchema = new mongoose.Schema(
       ref: "users",
       default: null,
     },
+    enabledPaymentMethods: {
+      type: [String],
+      enum: ["EcoCash", "Card Payment", "Pay on Boarding"],
+      default: ["EcoCash", "Card Payment"],
+    },
+    paymentMethodsUpdatedAt: {
+      type: Date,
+    },
+    paymentMethodsUpdatedBy: {
+      type: mongoose.Schema.ObjectId,
+      ref: "users",
+      default: null,
+    },
     createdBy: {
       type: mongoose.Schema.ObjectId,
       ref: "users",

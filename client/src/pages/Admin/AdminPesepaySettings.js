@@ -1,4 +1,4 @@
-import { Button, Form, Input, Select, Tag, message } from "antd";
+import { Button, Checkbox, Form, Input, Select, Tag, message } from "antd";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import PageTitle from "../../components/PageTitle";
@@ -10,7 +10,9 @@ import "../../resourses/service-fees.css";
 function AdminPesepaySettings() {
   const dispatch = useDispatch();
   const [form] = Form.useForm();
+  const [methodForm] = Form.useForm();
   const [companies, setCompanies] = useState([]);
+  const paymentMethodOptions = ["EcoCash", "Card Payment", "Pay on Boarding"];
 
   const getSettings = useCallback(async () => {
     try {
@@ -43,6 +45,18 @@ function AdminPesepaySettings() {
 
   const selectedCompanyId = Form.useWatch("companyId", form);
   const selectedCompany = companies.find((company) => company._id === selectedCompanyId);
+  const selectedMethodCompanyId = Form.useWatch("methodCompanyId", methodForm);
+  const selectedMethodCompany = companies.find((company) => company._id === selectedMethodCompanyId);
+
+  useEffect(() => {
+    if (selectedMethodCompany) {
+      methodForm.setFieldsValue({
+        enabledPaymentMethods: selectedMethodCompany.enabledPaymentMethods?.length
+          ? selectedMethodCompany.enabledPaymentMethods
+          : ["EcoCash", "Card Payment"],
+      });
+    }
+  }, [methodForm, selectedMethodCompany]);
 
   const onFinish = async (values) => {
     try {
@@ -55,6 +69,29 @@ function AdminPesepaySettings() {
       if (response.data.success) {
         message.success(response.data.message);
         form.resetFields(["pesepayIntegrationKey", "pesepayEncryptionKey"]);
+        getSettings();
+      } else {
+        message.error(response.data.message);
+      }
+    } catch (error) {
+      dispatch(HideLoading());
+      message.error(error.response?.data?.message || error.message);
+    }
+  };
+
+  const savePaymentMethods = async (values) => {
+    try {
+      if (!values.enabledPaymentMethods?.length) {
+        message.error("At least one payment method must be enabled.");
+        return;
+      }
+      dispatch(ShowLoading());
+      const response = await axiosInstance.patch(`/api/companies/payment-methods/${values.methodCompanyId}`, {
+        enabledPaymentMethods: values.enabledPaymentMethods,
+      });
+      dispatch(HideLoading());
+      if (response.data.success) {
+        message.success(response.data.message);
         getSettings();
       } else {
         message.error(response.data.message);
@@ -93,6 +130,16 @@ function AdminPesepaySettings() {
         record.pesepayKeysUpdatedAt
           ? new Date(record.pesepayKeysUpdatedAt).toLocaleString()
           : "Not set",
+    },
+    {
+      title: "Enabled Methods",
+      render: (_, record) => (
+        <div className="service-fee-tags">
+          {(record.enabledPaymentMethods?.length ? record.enabledPaymentMethods : ["EcoCash", "Card Payment"]).map((method) => (
+            <Tag key={method} color={method === "Pay on Boarding" ? "gold" : "green"}>{method}</Tag>
+          ))}
+        </div>
+      ),
     },
   ];
 
@@ -155,6 +202,53 @@ function AdminPesepaySettings() {
 
             <Button className="primary-btn service-fee-save" htmlType="submit">
               Save Payment Keys
+            </Button>
+          </Form>
+        </section>
+        <section className="service-fee-panel">
+          <div className="service-fee-panel-title">
+            <i className="ri-secure-payment-line"></i>
+            <div>
+              <h2>Payment Method Authority</h2>
+              <p>Choose which payment methods operators and passengers can use for a company.</p>
+            </div>
+          </div>
+
+          <Form
+            form={methodForm}
+            layout="vertical"
+            onFinish={savePaymentMethods}
+            initialValues={{ enabledPaymentMethods: ["EcoCash", "Card Payment"] }}
+          >
+            <Form.Item label="Company" name="methodCompanyId" rules={[{ required: true, message: "Select a company." }]}>
+              <Select
+                options={companyOptions}
+                placeholder="Choose company"
+                showSearch
+                optionFilterProp="label"
+                filterOption={(input, option) =>
+                  String(option?.label || "").toLowerCase().includes(String(input || "").toLowerCase())
+                }
+              />
+            </Form.Item>
+            <Form.Item
+              label="Accepted Payment Methods"
+              name="enabledPaymentMethods"
+              rules={[{ required: true, message: "Enable at least one payment method." }]}
+            >
+              <Checkbox.Group className="service-fee-checkboxes">
+                {paymentMethodOptions.map((method) => (
+                  <Checkbox key={method} value={method}>{method}</Checkbox>
+                ))}
+              </Checkbox.Group>
+            </Form.Item>
+            <div className="service-fee-preview">
+              <span>Current Methods</span>
+              <strong>{selectedMethodCompany?.companyName || "Choose a company"}</strong>
+              <p>EcoCash and Card Payment are enabled by default. Pay on Boarding can be enabled later by super admin.</p>
+            </div>
+            <Button className="primary-btn service-fee-save" htmlType="submit">
+              Save Payment Methods
             </Button>
           </Form>
         </section>

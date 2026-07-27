@@ -12,6 +12,10 @@ const inactiveStatuses = new Set([
   "payment_expired",
   "cancelled",
   "cancelled_by_user",
+  "cancelled_and_refunded",
+  "cancelled_and_credited",
+  "expired_and_refunded",
+  "expired_and_credited",
   "failed",
   "expired",
 ]);
@@ -22,6 +26,13 @@ const cancelledStatuses = new Set([
   "cancelled_and_refunded",
   "cancelled_and_credited",
   "payment_cancelled",
+  "expired_and_refunded",
+  "expired_and_credited",
+]);
+
+const reservationStatuses = new Set([
+  "reserved_awaiting_payment",
+  "pending_pay_on_boarding",
 ]);
 
 const money = (value) => `USD ${Number(value || 0).toLocaleString(undefined, {
@@ -70,6 +81,12 @@ const isCancelledBooking = (booking) =>
   [booking.status, booking.bookingStatus, booking.paymentStatus]
     .map(normalizeStatus)
     .some((status) => cancelledStatuses.has(status) || status.includes("cancel"));
+
+const isPayOnBoardingReservation = (booking) => {
+  const statuses = [booking.status, booking.bookingStatus, booking.paymentStatus].map(normalizeStatus);
+  const method = String(booking.paymentMethod || "").trim().toLowerCase();
+  return method === "pay on boarding" && statuses.some((status) => reservationStatuses.has(status));
+};
 
 const groupBy = (items, keyFn) =>
   items.reduce((acc, item) => {
@@ -154,9 +171,14 @@ function AdminHome() {
   }, [bookings, filters]);
 
   const metrics = useMemo(() => {
+    const reservedBookings = filteredBookings.filter(isPayOnBoardingReservation);
+    const activeReservedBookings = reservedBookings.filter((booking) => {
+      const bookingDate = getBookingDate(booking);
+      return !bookingDate || !bookingDate.isBefore(moment().startOf("day"));
+    });
     const validBookings = filteredBookings.filter((booking) => {
       const statuses = [booking.status, booking.bookingStatus, booking.paymentStatus].map(normalizeStatus);
-      return !statuses.some((status) => inactiveStatuses.has(status));
+      return !isPayOnBoardingReservation(booking) && !statuses.some((status) => inactiveStatuses.has(status));
     });
     const cancelledBookings = filteredBookings.filter(isCancelledBooking);
 
@@ -212,8 +234,32 @@ function AdminHome() {
       }))
       .slice(-8);
 
+    const reservedBusRows = Object.entries(groupBy(activeReservedBookings, (booking) => booking.bus?.name || booking.busName || "Unknown Bus"))
+      .map(([bus, busBookings]) => ({
+        bus,
+        reservations: busBookings.reduce((sum, booking) => sum + (getSeats(booking).length || 1), 0),
+        amount: busBookings.reduce((sum, booking) => sum + getBookingAmount(booking), 0),
+      }))
+      .sort((a, b) => b.reservations - a.reservations);
+
+    const reservedRouteRows = Object.entries(groupBy(activeReservedBookings, getRouteName))
+      .map(([route, routeBookings]) => ({
+        route,
+        reservations: routeBookings.reduce((sum, booking) => sum + (getSeats(booking).length || 1), 0),
+        amount: routeBookings.reduce((sum, booking) => sum + getBookingAmount(booking), 0),
+      }))
+      .sort((a, b) => b.reservations - a.reservations);
+
+    const reservedSeatsAwaitingPayment = activeReservedBookings.reduce((sum, booking) => sum + (getSeats(booking).length || 1), 0);
+    const reservedAmountAwaitingCollection = activeReservedBookings.reduce((sum, booking) => sum + getBookingAmount(booking), 0);
+
     return {
       validBookings,
+      activeReservedBookings,
+      reservedSeatsAwaitingPayment,
+      reservedAmountAwaitingCollection,
+      reservedBusRows,
+      reservedRouteRows,
       totalSales,
       ticketsSold,
       averageTicket,
@@ -298,6 +344,65 @@ function AdminHome() {
         </Col>
         <Col xs={24} md={12} xl={4}>
           <MetricCard icon="ri-close-circle-line" title="Ticket Cancelled" value={metrics.cancelledTickets} trend={money(metrics.cancelledValue)} muted />
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} className="mt-3">
+        <Col xs={24}>
+          <section className="dash-card">
+            <div className="dash-card-title">
+              <h2><i className="ri-reserved-line"></i> Reserved Seats Awaiting Payment</h2>
+              <span>{metrics.activeReservedBookings.length} reservation(s)</span>
+            </div>
+            <Row gutter={[12, 12]}>
+              <Col xs={24} md={12}>
+                <div className="dash-reserved-summary">
+                  <span>Total Reserved Seats Awaiting Payment</span>
+                  <strong>{metrics.reservedSeatsAwaitingPayment}</strong>
+                </div>
+              </Col>
+              <Col xs={24} md={12}>
+                <div className="dash-reserved-summary">
+                  <span>Total Amount Awaiting Collection</span>
+                  <strong>{money(metrics.reservedAmountAwaitingCollection)}</strong>
+                </div>
+              </Col>
+            </Row>
+            <Row gutter={[12, 12]} className="mt-3">
+              <Col xs={24} md={12}>
+                <h3 className="dash-subtitle">Reservations by Bus</h3>
+                <table className="dash-table">
+                  <tbody>
+                    {metrics.reservedBusRows.length ? metrics.reservedBusRows.slice(0, 5).map((row) => (
+                      <tr key={row.bus}>
+                        <td>{row.bus}</td>
+                        <td>{row.reservations}</td>
+                        <td>{money(row.amount)}</td>
+                      </tr>
+                    )) : (
+                      <tr><td>No reservations awaiting payment</td><td></td><td></td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </Col>
+              <Col xs={24} md={12}>
+                <h3 className="dash-subtitle">Reservations by Route</h3>
+                <table className="dash-table">
+                  <tbody>
+                    {metrics.reservedRouteRows.length ? metrics.reservedRouteRows.slice(0, 5).map((row) => (
+                      <tr key={row.route}>
+                        <td>{row.route}</td>
+                        <td>{row.reservations}</td>
+                        <td>{money(row.amount)}</td>
+                      </tr>
+                    )) : (
+                      <tr><td>No reservations awaiting payment</td><td></td><td></td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </Col>
+            </Row>
+          </section>
         </Col>
       </Row>
 

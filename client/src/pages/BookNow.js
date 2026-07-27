@@ -1,4 +1,4 @@
-import { Col, message, Row } from "antd";
+import { Col, message, Radio, Row } from "antd";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
@@ -23,6 +23,8 @@ function BookNow() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [bus, setBus] = useState(null);
+  const [paymentMethods, setPaymentMethods] = useState(["EcoCash", "Card Payment"]);
+  const [paymentMethod, setPaymentMethod] = useState("Card Payment");
   const todayDate = getTodayDate();
   const isPastJourneyDate = bus?.journeyDate && bus.journeyDate.slice(0, 10) < todayDate;
   const getBus = async () => {
@@ -53,6 +55,22 @@ function BookNow() {
     }
   };
 
+  const getPaymentMethods = async () => {
+    try {
+      const response = await axiosInstance.get("/api/companies");
+      if (response.data.success) {
+        const company = (response.data.data || [])[0];
+        const enabled = company?.enabledPaymentMethods?.length
+          ? company.enabledPaymentMethods
+          : ["EcoCash", "Card Payment"];
+        setPaymentMethods(enabled);
+        setPaymentMethod((current) => (enabled.includes(current) ? current : enabled[0]));
+      }
+    } catch (error) {
+      message.error(error.response?.data?.message || error.message);
+    }
+  };
+
   const bookNow = async () => {
     if (isPastJourneyDate) {
       message.error("Past dates are not allowed for booking.");
@@ -78,8 +96,12 @@ function BookNow() {
         boardingPoint: bus.boardingPoint,
         dropOffPoint: bus.dropOffPoint,
         fare: bus.fare,
+        amountPaid: Number(bus.fare || 0) * selectedSeats.length,
         currency: bus.currency || bus.fareCurrency || "USD",
         seats: selectedSeats,
+        paymentMethod,
+        paymentStatus: paymentMethod === "Pay on Boarding" ? "PENDING_PAY_ON_BOARDING" : "Paid",
+        bookingStatus: paymentMethod === "Pay on Boarding" ? "RESERVED_AWAITING_PAYMENT" : "CONFIRMED",
         transactionId: "DIRECT-" + Date.now(),
       });
       dispatch(HideLoading());
@@ -97,6 +119,7 @@ function BookNow() {
 
   useEffect(() => {
     getBus();
+    getPaymentMethods();
   }, []);
   return (
     <div>
@@ -144,6 +167,14 @@ function BookNow() {
               <h1 className="text-2xl mt-2">
                 Fare : {currencyLabel(bus.currency || bus.fareCurrency)} {bus.fare * selectedSeats.length} /-
               </h1>
+              <div className="mt-2">
+                <p className="text-md">Payment Method</p>
+                <Radio.Group value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>
+                  {paymentMethods.map((method) => (
+                    <Radio key={method} value={method}>{method}</Radio>
+                  ))}
+                </Radio.Group>
+              </div>
               <hr />
 
               <button

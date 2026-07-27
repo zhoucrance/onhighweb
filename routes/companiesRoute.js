@@ -4,6 +4,15 @@ const authMiddleware = require("../middlewares/authMiddleware");
 const { requireSuperAdmin, serializeAuthUser } = require("../middlewares/authorizationMiddleware");
 
 const normalizeString = (value) => String(value || "").trim();
+const paymentMethodOptions = ["EcoCash", "Card Payment", "Pay on Boarding"];
+
+const normalizePaymentMethods = (methods) => [
+  ...new Set(
+    (Array.isArray(methods) ? methods : [methods])
+      .map(normalizeString)
+      .filter((method) => paymentMethodOptions.includes(method))
+  ),
+];
 
 const withoutPesepaySecrets = (company) => {
   if (!company) return company;
@@ -21,6 +30,11 @@ const serializePesepaySettings = (company) => ({
   hasPesepayIntegrationKey: Boolean(normalizeString(company.pesepayIntegrationKey)),
   hasPesepayEncryptionKey: Boolean(normalizeString(company.pesepayEncryptionKey)),
   pesepayKeysUpdatedAt: company.pesepayKeysUpdatedAt || null,
+  enabledPaymentMethods:
+    Array.isArray(company.enabledPaymentMethods) && company.enabledPaymentMethods.length
+      ? company.enabledPaymentMethods
+      : ["EcoCash", "Card Payment"],
+  paymentMethodsUpdatedAt: company.paymentMethodsUpdatedAt || null,
 });
 
 router.post("/", authMiddleware, requireSuperAdmin, async (req, res) => {
@@ -96,6 +110,37 @@ router.patch("/pesepay-settings/:id", authMiddleware, requireSuperAdmin, async (
     if (!company) return res.status(404).send({ message: "Company not found", success: false, data: null });
     res.send({
       message: "Pesepay keys saved successfully",
+      success: true,
+      data: serializePesepaySettings(company),
+    });
+  } catch (error) {
+    res.status(500).send({ message: error.message, success: false, data: null });
+  }
+});
+
+router.patch("/payment-methods/:id", authMiddleware, requireSuperAdmin, async (req, res) => {
+  try {
+    const enabledPaymentMethods = normalizePaymentMethods(req.body.enabledPaymentMethods);
+    if (!enabledPaymentMethods.length) {
+      return res.status(400).send({
+        message: "At least one payment method must be enabled.",
+        success: false,
+        data: null,
+      });
+    }
+
+    const company = await Company.findByIdAndUpdate(
+      req.params.id,
+      {
+        enabledPaymentMethods,
+        paymentMethodsUpdatedAt: new Date(),
+        paymentMethodsUpdatedBy: req.user._id,
+      },
+      { new: true }
+    );
+    if (!company) return res.status(404).send({ message: "Company not found", success: false, data: null });
+    res.send({
+      message: "Payment methods saved successfully",
       success: true,
       data: serializePesepaySettings(company),
     });

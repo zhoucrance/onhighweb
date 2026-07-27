@@ -41,11 +41,17 @@ const statusColors = {
   CANCELLED_AND_REFUNDED: "red",
   CANCELLED_AND_CREDITED: "purple",
   NOT_BOARDED: "orange",
+  RESERVED_AWAITING_PAYMENT: "gold",
+  EXPIRED: "red",
+  EXPIRED_AND_REFUNDED: "red",
+  EXPIRED_AND_CREDITED: "purple",
 };
 
 const bookingTabs = [
   { key: "SEARCH", label: "Search Booking" },
   { key: "PAID", label: "Paid Bookings" },
+  { key: "PAY_ON_BOARDING", label: "Pay on Boarding" },
+  { key: "EXPIRED", label: "Expired Tickets" },
   { key: "CANCELLED", label: "Cancelled Bookings" },
   { key: "REFUNDED", label: "Refunded" },
   { key: "COMPLETED", label: "Completed" },
@@ -427,12 +433,23 @@ function AdminBookingManagement() {
 
     try {
       dispatch(ShowLoading());
-      const response = await axiosInstance.post("/api/bookings/management/cancel", {
-        ticketNumber: selectedBooking.ticketNumber,
-        cancellationReason: cancellationDraft.cancellationReason,
-        cancellationNote: cancellationDraft.cancellationNote,
-        refundMethod: cancellationDraft.refundMethod,
-      });
+      const isExpiredRefund = selectedBooking.canRefundExpired;
+      const response = await axiosInstance.post(
+        isExpiredRefund ? "/api/bookings/management/refund-expired" : "/api/bookings/management/cancel",
+        isExpiredRefund
+          ? {
+              ticketNumber: selectedBooking.ticketNumber,
+              refundReason: cancellationDraft.cancellationReason,
+              refundNote: cancellationDraft.cancellationNote,
+              refundMethod: cancellationDraft.refundMethod,
+            }
+          : {
+              ticketNumber: selectedBooking.ticketNumber,
+              cancellationReason: cancellationDraft.cancellationReason,
+              cancellationNote: cancellationDraft.cancellationNote,
+              refundMethod: cancellationDraft.refundMethod,
+            }
+      );
       dispatch(HideLoading());
       if (response.data.success) {
         setSelectedBooking(response.data.data.booking);
@@ -447,6 +464,73 @@ function AdminBookingManagement() {
       dispatch(HideLoading());
       message.error(error.response?.data?.message || error.message);
     }
+  };
+
+  const receivePayOnBoardingPayment = async () => {
+    if (!selectedBooking) return;
+    Modal.confirm({
+      title: "Receive Pay on Boarding payment?",
+      content: `Confirm collection of USD ${Number(selectedBooking.payment?.amountPaid || 0).toFixed(2)} for ticket ${selectedBooking.ticketNumber}.`,
+      okText: "Receive Payment",
+      onOk: async () => {
+        try {
+          dispatch(ShowLoading());
+          const response = await axiosInstance.post("/api/bookings/management/receive-payment", {
+            ticketNumber: selectedBooking.ticketNumber,
+          });
+          dispatch(HideLoading());
+          if (response.data.success) {
+            setSelectedBooking(response.data.data);
+            loadBookingRows();
+            message.success(response.data.message);
+          } else {
+            message.error(response.data.message);
+          }
+        } catch (error) {
+          dispatch(HideLoading());
+          message.error(error.response?.data?.message || error.message);
+        }
+      },
+    });
+  };
+
+  const cancelPayOnBoardingReservation = async () => {
+    if (!selectedBooking) return;
+    let reason = "Reservation cancelled";
+    Modal.confirm({
+      title: "Cancel Pay on Boarding reservation?",
+      content: (
+        <Input.TextArea
+          rows={3}
+          defaultValue={reason}
+          onChange={(event) => {
+            reason = event.target.value;
+          }}
+        />
+      ),
+      okText: "Cancel Reservation",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          dispatch(ShowLoading());
+          const response = await axiosInstance.post("/api/bookings/management/cancel-reservation", {
+            ticketNumber: selectedBooking.ticketNumber,
+            cancellationReason: reason,
+          });
+          dispatch(HideLoading());
+          if (response.data.success) {
+            setSelectedBooking(response.data.data);
+            loadBookingRows();
+            message.success(response.data.message);
+          } else {
+            message.error(response.data.message);
+          }
+        } catch (error) {
+          dispatch(HideLoading());
+          message.error(error.response?.data?.message || error.message);
+        }
+      },
+    });
   };
 
   const handlePrint = useReactToPrint({
@@ -746,7 +830,40 @@ function AdminBookingManagement() {
                         Mark as Boarded & Print Ticket
                       </Button>
                     )}
-                    <Button disabled={!selectedBooking.canCancel} onClick={() => setCancelStep("cancel")}>
+                    {selectedBooking.canReceivePayment && (
+                      <Button type="primary" className="bm-green-button" onClick={receivePayOnBoardingPayment}>
+                        Receive Payment
+                      </Button>
+                    )}
+                    {selectedBooking.canCancelReservation && (
+                      <Button danger onClick={cancelPayOnBoardingReservation}>
+                        Cancel Reservation
+                      </Button>
+                    )}
+                    {selectedBooking.canRefundExpired && (
+                      <Button
+                        type="primary"
+                        onClick={() => {
+                          form.setFieldsValue({
+                            cancellationReason: "Expired Ticket Refund",
+                            refundMethod: selectedRefundMethods[0],
+                          });
+                          setCancelStep("cancel");
+                        }}
+                      >
+                        Refund Expired Ticket
+                      </Button>
+                    )}
+                    <Button
+                      disabled={!selectedBooking.canCancel}
+                      onClick={() => {
+                        form.setFieldsValue({
+                          cancellationReason: "Customer Request",
+                          refundMethod: selectedRefundMethods[0],
+                        });
+                        setCancelStep("cancel");
+                      }}
+                    >
                       Cancel Booking
                     </Button>
                   </div>
@@ -754,7 +871,7 @@ function AdminBookingManagement() {
               </Card>
 
               {cancelStep === "cancel" && (
-                <Card className="bm-card" title="Cancel Booking">
+                <Card className="bm-card" title={selectedBooking.canRefundExpired ? "Refund Expired Ticket" : "Cancel Booking"}>
                   <Form
                     form={form}
                     layout="vertical"
@@ -769,6 +886,7 @@ function AdminBookingManagement() {
                       rules={[{ required: true, message: "Select cancellation reason" }]}
                     >
                       <Select>
+                        {selectedBooking.canRefundExpired && <Select.Option value="Expired Ticket Refund">Expired Ticket Refund</Select.Option>}
                         <Select.Option value="Customer Request">Customer Request</Select.Option>
                         <Select.Option value="Admin Manual">Admin Manual</Select.Option>
                         <Select.Option value="Service Change">Service Change</Select.Option>
@@ -805,7 +923,7 @@ function AdminBookingManagement() {
                     <div className="bm-actions">
                       <Button onClick={() => setCancelStep("details")}>Back</Button>
                       <Button type="primary" onClick={reviewCancellation}>
-                        Review Cancellation
+                        {selectedBooking.canRefundExpired ? "Review Refund" : "Review Cancellation"}
                       </Button>
                     </div>
                   </Form>
@@ -813,7 +931,7 @@ function AdminBookingManagement() {
               )}
 
               {cancelStep === "review" && cancellationDraft && (
-                <Card className="bm-card" title="Review & Confirm Cancellation">
+                <Card className="bm-card" title={selectedBooking.canRefundExpired ? "Review & Confirm Refund" : "Review & Confirm Cancellation"}>
                   <Descriptions bordered size="small" column={1}>
                     <Descriptions.Item label="Customer">{selectedBooking.customer.name}</Descriptions.Item>
                     <Descriptions.Item label="Route">
@@ -833,7 +951,7 @@ function AdminBookingManagement() {
                   <div className="bm-actions">
                     <Button onClick={() => setCancelStep("cancel")}>Back</Button>
                     <Button type="primary" className="bm-green-button" onClick={confirmCancellation}>
-                      Confirm Cancellation
+                      {selectedBooking.canRefundExpired ? "Confirm Refund" : "Confirm Cancellation"}
                     </Button>
                   </div>
                 </Card>

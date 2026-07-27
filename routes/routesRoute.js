@@ -97,9 +97,13 @@ const inactiveBookingStatuses = [
   "cancelled",
   "cancelled_and_refunded",
   "cancelled_and_credited",
+  "expired_and_refunded",
+  "expired_and_credited",
   "CANCELLED",
   "CANCELLED_AND_REFUNDED",
   "CANCELLED_AND_CREDITED",
+  "EXPIRED_AND_REFUNDED",
+  "EXPIRED_AND_CREDITED",
   "cancelled_by_user",
 ];
 const inactivePaymentStatuses = [

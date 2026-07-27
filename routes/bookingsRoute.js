@@ -107,9 +107,13 @@ const inactiveBookingStatuses = [
   "cancelled",
   "cancelled_and_refunded",
   "cancelled_and_credited",
+  "expired_and_refunded",
+  "expired_and_credited",
   "CANCELLED",
   "CANCELLED_AND_REFUNDED",
   "CANCELLED_AND_CREDITED",
+  "EXPIRED_AND_REFUNDED",
+  "EXPIRED_AND_CREDITED",
   "cancelled_by_user",
 ];
 
@@ -130,6 +134,15 @@ const inactivePaymentStatuses = [
   "failed",
   "expired",
 ];
+
+const payOnBoardingPaymentStatus = "PENDING_PAY_ON_BOARDING";
+const reservedAwaitingPaymentStatus = "RESERVED_AWAITING_PAYMENT";
+
+const isPayOnBoardingMethod = (method) => normalizeCode(method) === "PAY_ON_BOARDING";
+const isPayOnBoardingReservation = (booking) =>
+  isPayOnBoardingMethod(booking?.paymentMethod) &&
+  normalizeCode(booking?.paymentStatus) === payOnBoardingPaymentStatus &&
+  normalizeCode(booking?.bookingStatus || booking?.status) === reservedAwaitingPaymentStatus;
 
 const internalSeatReleaseMiddleware = (req, res, next) => {
   if (!internalSeatReleaseToken) {
@@ -335,6 +348,16 @@ router.post("/book-seat", authMiddleware, async (req, res) => {
       seats: selectedSeats,
       user: req.body.userId,
     };
+    if (isPayOnBoardingMethod(bookingData.paymentMethod)) {
+      const seatCount = selectedSeats.length || 1;
+      const pendingAmount = Number(bookingData.amountPaid ?? Number(bookingData.fare || 0) * seatCount);
+      bookingData.amountPaid = pendingAmount;
+      bookingData.paymentMethod = "Pay on Boarding";
+      bookingData.paymentStatus = payOnBoardingPaymentStatus;
+      bookingData.status = reservedAwaitingPaymentStatus;
+      bookingData.bookingStatus = reservedAwaitingPaymentStatus;
+      bookingData.boardedStatus = "NOT_BOARDED";
+    }
 
     if (req.body.trip) {
       const trip = await Trip.findById(req.body.trip).populate("bus");
@@ -1036,6 +1059,15 @@ const isManagementPaymentInvalid = (booking) => {
     .some((status) => invalidPaymentCodes.has(status));
 };
 
+const isPaidUnboardedExpired = (booking) => {
+  const statuses = [booking.paymentStatus, booking.status, booking.bookingStatus].map(normalizeCode);
+  const isPaid = statuses.includes("PAID") || statuses.includes("CONFIRMED");
+  const isBoarded = normalizeCode(booking.boardedStatus) === "BOARDED" || statuses.includes("BOARDED");
+  const isInactive = isManagementPaymentInvalid(booking) || statuses.some((status) => status.includes("CANCEL") || status.includes("REFUND") || status.includes("CREDIT"));
+  const travelDate = parseDateOnly(booking.travelDate || booking.journeyDate || booking.trip?.journeyDate || booking.bus?.journeyDate);
+  return Boolean(isPaid && !isBoarded && !isInactive && travelDate && travelDate < getTodayDate());
+};
+
 const hasManagementTicketNumber = (booking) => Boolean(normalizeString(booking.ticketNumber || booking.ticket_number));
 
 const isManagementPaymentConfirmed = (booking) => {
@@ -1045,6 +1077,7 @@ const isManagementPaymentConfirmed = (booking) => {
 
 const isManagementBookingVisible = (booking) => {
   const source = getManagementSource(booking);
+  if (isPayOnBoardingReservation(booking)) return true;
   if (source !== "WHATSAPP") return true;
   return hasManagementTicketNumber(booking) && isManagementPaymentConfirmed(booking) && !isManagementPaymentInvalid(booking);
 };
@@ -1056,7 +1089,9 @@ const getManagementStatus = (booking, source) => {
   if (isManagementPaymentInvalid(booking)) return "INVALID_PAYMENT";
   if (rawStatus.includes("CREDIT")) return "CANCELLED_AND_CREDITED";
   if (rawStatus.includes("REFUND") || rawStatus.includes("CANCEL")) return "CANCELLED_AND_REFUNDED";
+  if (isPayOnBoardingReservation(booking)) return "RESERVED_AWAITING_PAYMENT";
   if (boardedStatus === "BOARDED" || rawStatus === "BOARDED") return "BOARDED";
+  if (isPaidUnboardedExpired(booking)) return "EXPIRED";
   if (source === "WEB_APP" && ticketReference.includes("DIR")) return "BOARDED";
   return "CONFIRMED";
 };
@@ -1213,14 +1248,20 @@ const normalizeManagementBooking = (booking) => {
       time: boardedAt,
     },
     canMarkBoarded: isTicketValid && source === "WHATSAPP" && bookingStatus === "CONFIRMED",
+    canReceivePayment: isTicketValid && bookingStatus === "RESERVED_AWAITING_PAYMENT",
+    canCancelReservation: isTicketValid && bookingStatus === "RESERVED_AWAITING_PAYMENT",
+    canRefundExpired: isTicketValid && bookingStatus === "EXPIRED",
     canCancel:
       isTicketValid &&
       bookingStatus !== "BOARDED" &&
+      bookingStatus !== "RESERVED_AWAITING_PAYMENT" &&
       ["WHATSAPP", "WEB_APP"].includes(source) &&
       bookingStatus === "CONFIRMED",
     refundMethods:
-      bookingStatus === "BOARDED"
+      bookingStatus === "BOARDED" || bookingStatus === "RESERVED_AWAITING_PAYMENT"
         ? []
+        : bookingStatus === "EXPIRED"
+        ? ["CASH", "CREDITS"]
         : source === "WEB_APP"
         ? ["CASH", "CREDITS"]
         : bookingStatus === "CONFIRMED"
@@ -1286,6 +1327,8 @@ const bookingMatchesManagementTab = (booking, tab) => {
   const selectedTab = normalizeCode(tab || "VIEW");
   if (selectedTab === "VIEW" || selectedTab === "ALL") return true;
   if (selectedTab === "PAID") return normalized.bookingStatus === "CONFIRMED";
+  if (selectedTab === "PAY_ON_BOARDING") return normalized.bookingStatus === "RESERVED_AWAITING_PAYMENT";
+  if (selectedTab === "EXPIRED") return normalized.bookingStatus === "EXPIRED";
   if (selectedTab === "CANCELLED") return isExportCancelledBooking(booking);
   if (selectedTab === "REFUNDED") return isRefundedManagementBooking(booking);
   if (selectedTab === "COMPLETED") return normalized.bookingStatus === "BOARDED";
@@ -1410,6 +1453,178 @@ const releaseManagedBookingSeats = async (booking) => {
     bookingStatus: booking.bookingStatus,
   });
 };
+
+router.post("/management/receive-payment", authMiddleware, async (req, res) => {
+  try {
+    const booking = await findManagementBooking(req.body.ticketNumber, req.user);
+    if (!booking) {
+      return res.status(200).send({ message: "Booking not found", success: false });
+    }
+    const display = normalizeManagementBooking(booking);
+    if (!display.canReceivePayment) {
+      return res.status(200).send({ message: "Only Pay on Boarding reservations awaiting payment can receive payment.", success: false });
+    }
+
+    booking.status = "CONFIRMED";
+    booking.bookingStatus = "CONFIRMED";
+    booking.paymentStatus = "Paid";
+    booking.paymentMethod = "Pay on Boarding";
+    booking.paymentReceivedAt = new Date();
+    booking.paymentReceivedBy = req.user._id;
+    booking.processedByUserId = req.user._id;
+    booking.boardedStatus = normalizeString(booking.boardedStatus || "NOT_BOARDED");
+    await booking.save();
+    await createAuditNotification(req.user, {
+      companyId: booking.companyId || booking.bus?.companyId,
+      module: "booking_management",
+      action: "pay on boarding payment received",
+      entityType: "booking",
+      entityId: booking._id,
+      entityLabel: display.ticketNumber,
+    });
+
+    const refreshed = await bookingManagementPopulate(Booking.findById(booking._id));
+    res.status(200).send({
+      message: "Payment received and booking confirmed",
+      data: normalizeManagementBooking(refreshed),
+      success: true,
+    });
+  } catch (error) {
+    res.status(500).send({ message: "Failed to receive payment", data: error, success: false });
+  }
+});
+
+router.post("/management/cancel-reservation", authMiddleware, async (req, res) => {
+  try {
+    const booking = await findManagementBooking(req.body.ticketNumber, req.user);
+    if (!booking) {
+      return res.status(200).send({ message: "Booking not found", success: false });
+    }
+    const display = normalizeManagementBooking(booking);
+    if (!display.canCancelReservation) {
+      return res.status(200).send({ message: "Only Pay on Boarding reservations awaiting payment can be cancelled.", success: false });
+    }
+
+    booking.status = "CANCELLED";
+    booking.bookingStatus = "CANCELLED";
+    booking.paymentStatus = "CANCELLED";
+    booking.cancelReason = normalizeString(req.body.cancellationReason || req.body.reason) || "Reservation cancelled";
+    booking.cancelledAt = new Date();
+    booking.reservationCancelledAt = booking.cancelledAt;
+    booking.processedByUserId = req.user._id;
+    await booking.save();
+    await releaseManagedBookingSeats(booking);
+    await createAuditNotification(req.user, {
+      companyId: booking.companyId || booking.bus?.companyId,
+      module: "booking_management",
+      action: "pay on boarding reservation cancelled",
+      entityType: "booking",
+      entityId: booking._id,
+      entityLabel: display.ticketNumber,
+    });
+
+    const refreshed = await bookingManagementPopulate(Booking.findById(booking._id));
+    res.status(200).send({
+      message: "Reservation cancelled and seat released",
+      data: normalizeManagementBooking(refreshed),
+      success: true,
+    });
+  } catch (error) {
+    res.status(500).send({ message: "Reservation cancellation failed", data: error, success: false });
+  }
+});
+
+router.post("/management/refund-expired", authMiddleware, async (req, res) => {
+  try {
+    const booking = await findManagementBooking(req.body.ticketNumber, req.user);
+    if (!booking) {
+      return res.status(200).send({ message: "Booking not found", success: false });
+    }
+    const display = normalizeManagementBooking(booking);
+    const refundMethod = normalizeCode(req.body.refundMethod);
+    const allowedMethods = display.refundMethods;
+    if (!display.canRefundExpired) {
+      return res.status(200).send({ message: "Only expired paid tickets can be refunded here.", success: false });
+    }
+    if (!allowedMethods.includes(refundMethod)) {
+      return res.status(200).send({ message: "Invalid refund option.", success: false });
+    }
+
+    const finalStatus = refundMethod === "CREDITS" ? "EXPIRED_AND_CREDITED" : "EXPIRED_AND_REFUNDED";
+    const refundAmount = getBookingAmount(booking);
+    booking.status = finalStatus;
+    booking.bookingStatus = finalStatus;
+    booking.refundedAt = new Date();
+    booking.refundedBy = req.user._id;
+    booking.cancelReason = normalizeString(req.body.refundReason || req.body.reason) || "Expired ticket refund";
+    booking.cancelledAt = new Date();
+    booking.processedByUserId = req.user._id;
+    await booking.save();
+    await releaseManagedBookingSeats(booking);
+
+    const cancellation = await new Cancellation({
+      booking: booking._id,
+      ticketNumber: display.ticketNumber,
+      bookingSource: display.source,
+      reason: booking.cancelReason,
+      note: normalizeString(req.body.refundNote || req.body.note),
+      refundMethod,
+      refundAmount,
+      finalStatus,
+      processedByUserId: req.user._id,
+    }).save();
+
+    let refund = null;
+    let credit = null;
+    if (refundMethod === "CREDITS") {
+      const validUntil = new Date();
+      validUntil.setMonth(validUntil.getMonth() + 6);
+      credit = await new CustomerCredit({
+        booking: booking._id,
+        cancellation: cancellation._id,
+        ticketNumber: display.ticketNumber,
+        customerName: display.customer.name,
+        customerPhone: display.customer.phone,
+        amount: refundAmount,
+        balance: refundAmount,
+        validUntil,
+        processedByUserId: req.user._id,
+      }).save();
+    } else {
+      refund = await new Refund({
+        booking: booking._id,
+        cancellation: cancellation._id,
+        ticketNumber: display.ticketNumber,
+        method: refundMethod,
+        amount: refundAmount,
+        processedByUserId: req.user._id,
+      }).save();
+    }
+
+    await createAuditNotification(req.user, {
+      companyId: booking.companyId || booking.bus?.companyId,
+      module: "booking_management",
+      action: "expired ticket refunded",
+      entityType: "booking",
+      entityId: booking._id,
+      entityLabel: display.ticketNumber,
+    });
+
+    const refreshed = await bookingManagementPopulate(Booking.findById(booking._id));
+    res.status(200).send({
+      message: refundMethod === "CREDITS" ? "Expired ticket credited successfully" : "Expired ticket refunded successfully",
+      data: {
+        booking: normalizeManagementBooking(refreshed),
+        cancellation,
+        refund,
+        credit,
+      },
+      success: true,
+    });
+  } catch (error) {
+    res.status(500).send({ message: "Expired ticket refund failed", data: error, success: false });
+  }
+});
 
 router.post("/management/recent", authMiddleware, async (req, res) => {
   try {

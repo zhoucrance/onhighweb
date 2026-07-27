@@ -205,6 +205,26 @@ const bookingSchema = new mongoose.Schema(
     paymentMerchantReference: {
       type: String,
     },
+    paymentReceivedAt: {
+      type: Date,
+    },
+    paymentReceivedBy: {
+      type: mongoose.Schema.ObjectId,
+      ref: "users",
+    },
+    reservationCancelledAt: {
+      type: Date,
+    },
+    reservationExpiresAt: {
+      type: Date,
+    },
+    refundedAt: {
+      type: Date,
+    },
+    refundedBy: {
+      type: mongoose.Schema.ObjectId,
+      ref: "users",
+    },
     creditAppliedAmount: {
       type: Number,
       default: 0,
