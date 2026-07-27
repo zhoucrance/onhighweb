@@ -149,6 +149,11 @@ const tripSchema = new mongoose.Schema(
       type: Array,
       default: [],
     },
+    acceptedPaymentMethods: {
+      type: [String],
+      enum: ["EcoCash", "Card Payment", "Pay on Boarding"],
+      default: ["EcoCash", "Card Payment"],
+    },
   },
   {
     timestamps: true,

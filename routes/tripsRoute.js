@@ -3,11 +3,27 @@ const mongoose = require("mongoose");
 const Trip = require("../models/tripModel");
 const Bus = require("../models/busModel");
 const Route = require("../models/routeModel");
+const Company = require("../models/companyModel");
 const authMiddleware = require("../middlewares/authMiddleware");
 const { createAuditNotification } = require("../utils/auditNotifications");
 const { getAssignedConductorBusId, getAssignedOfficeBusIds, getIdValue, serializeAuthUser } = require("../middlewares/authorizationMiddleware");
 
 const normalizeString = (value) => String(value || "").trim();
+const paymentMethodOptions = ["EcoCash", "Card Payment", "Pay on Boarding"];
+
+const normalizePaymentMethods = (methods) => [
+  ...new Set(
+    (Array.isArray(methods) ? methods : [methods])
+      .map(normalizeString)
+      .filter((method) => paymentMethodOptions.includes(method))
+  ),
+];
+
+const getCompanyPaymentMethods = async (companyId) => {
+  if (!companyId) return ["EcoCash", "Card Payment"];
+  const company = await Company.findById(companyId, { enabledPaymentMethods: 1 }).lean();
+  return company?.enabledPaymentMethods?.length ? company.enabledPaymentMethods : ["EcoCash", "Card Payment"];
+};
 
 const parseClockTimeToMinutes = (value) => {
   const [hours, minutes] = normalizeString(value)
@@ -118,12 +134,23 @@ const canAccessTrip = (user, trip) => {
   return getIdValue(trip?.companyId || trip?.bus?.companyId || trip?.route?.companyId) === getIdValue(companyId);
 };
 
-const buildTripPayload = (body, route) => {
+const buildTripPayload = async (body, route) => {
   const stopSchedule = normalizeStopSchedule(body.stopSchedule);
   const firstStop = stopSchedule[0] || {};
   const lastStop = stopSchedule[stopSchedule.length - 1] || {};
   const scheduleStartDate = normalizeString(body.scheduleStartDate || body.journeyDate);
   const runsContinuously = body.runsContinuously !== false;
+  const companyPaymentMethods = await getCompanyPaymentMethods(route.companyId);
+  const requestedPaymentMethods = normalizePaymentMethods(body.acceptedPaymentMethods);
+  const acceptedPaymentMethods = requestedPaymentMethods.length ? requestedPaymentMethods : companyPaymentMethods;
+  const invalidMethods = acceptedPaymentMethods.filter((method) => !companyPaymentMethods.includes(method));
+
+  if (!acceptedPaymentMethods.length) {
+    throw new Error("Select at least one payment method for this trip.");
+  }
+  if (invalidMethods.length) {
+    throw new Error(`Trip payment methods must be enabled by super admin first: ${invalidMethods.join(", ")}.`);
+  }
 
   return {
     bus: body.bus || null,
@@ -149,6 +176,7 @@ const buildTripPayload = (body, route) => {
     returnArrivalDay: "",
     returnArrivalTime: "",
     status: normalizeString(body.status) || "Yet To Start",
+    acceptedPaymentMethods,
   };
 };
 
@@ -201,7 +229,7 @@ router.post("/save-trip", authMiddleware, async (req, res) => {
     }
     const assignedBus = await validateBusAssignment(req.body, req.user, req.body._id || null);
 
-    const payload = buildTripPayload(req.body, route);
+    const payload = await buildTripPayload(req.body, route);
     payload.companyId = route.companyId || assignedBus?.companyId || null;
     const duplicateTripCode = await Trip.findOne({
       tripCode: payload.tripCode,

@@ -45,7 +45,13 @@ function BookNow() {
       );
       dispatch(HideLoading());
       if (response.data.success) {
-        setBus(response.data.data);
+        const nextBus = response.data.data;
+        setBus(nextBus);
+        const tripMethods = nextBus?.acceptedPaymentMethods?.length ? nextBus.acceptedPaymentMethods : null;
+        if (tripMethods) {
+          setPaymentMethods(tripMethods);
+          setPaymentMethod((current) => (tripMethods.includes(current) ? current : tripMethods[0]));
+        }
       } else {
         message.error(response.data.message);
       }
@@ -119,7 +125,9 @@ function BookNow() {
 
   useEffect(() => {
     getBus();
-    getPaymentMethods();
+    if (!isTripBooking) {
+      getPaymentMethods();
+    }
   }, []);
   return (
     <div>

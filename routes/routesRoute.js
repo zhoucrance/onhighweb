@@ -9,6 +9,7 @@ const RouteFare = require("../models/routeFareModel");
 const Bus = require("../models/busModel");
 const Trip = require("../models/tripModel");
 const Booking = require("../models/bookingsModel");
+const Company = require("../models/companyModel");
 const { getAssignedConductorBusId, getAssignedOfficeBusIds, getIdValue, serializeAuthUser } = require("../middlewares/authorizationMiddleware");
 const { createAuditNotification } = require("../utils/auditNotifications");
 
@@ -26,6 +27,11 @@ const journeyDateQuery = (value) => ({
 
 const normalizeString = (value) => String(value || "").trim();
 const seatDebugLogPath = path.join(__dirname, "..", ".codex-logs", "seat-debug.jsonl");
+const getCompanyPaymentMethods = async (companyId) => {
+  if (!companyId) return ["EcoCash", "Card Payment"];
+  const company = await Company.findById(companyId, { enabledPaymentMethods: 1 }).lean();
+  return company?.enabledPaymentMethods?.length ? company.enabledPaymentMethods : ["EcoCash", "Card Payment"];
+};
 
 const getScopedCompanyId = (user) => {
   const authUser = serializeAuthUser(user);
@@ -241,6 +247,10 @@ const formatTripResult = async (trip, route, fromStop, toStop, fare, travelDate 
     : [];
   const seatsBooked = [...new Set(segmentBookedSeats)];
   const capacity = Number(bus.capacity || 0);
+  const companyPaymentMethods = await getCompanyPaymentMethods(trip.companyId || route.companyId || bus.companyId);
+  const acceptedPaymentMethods = Array.isArray(trip.acceptedPaymentMethods) && trip.acceptedPaymentMethods.length
+    ? trip.acceptedPaymentMethods.filter((method) => companyPaymentMethods.includes(method))
+    : companyPaymentMethods;
   console.log(
     "[route-search] seat sources",
     JSON.stringify({
@@ -318,6 +328,7 @@ const formatTripResult = async (trip, route, fromStop, toStop, fare, travelDate 
     currency: route.fareCurrency || bus.currency || "USD",
     fareCurrency: route.fareCurrency || bus.currency || "USD",
     fareExchangeRate: route.fareExchangeRate || "",
+    acceptedPaymentMethods: acceptedPaymentMethods.length ? acceptedPaymentMethods : companyPaymentMethods,
     seatsBooked,
     seatsLeft: capacity ? Math.max(capacity - seatsBooked.length, 0) : 0,
     status: trip.status,

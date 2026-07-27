@@ -7,6 +7,7 @@ const Booking = require("../models/bookingsModel");
 const Bus = require("../models/busModel");
 const Trip = require("../models/tripModel");
 const RouteStop = require("../models/routeStopModel");
+const Company = require("../models/companyModel");
 const Cancellation = require("../models/cancellationModel");
 const Refund = require("../models/refundModel");
 const CustomerCredit = require("../models/customerCreditModel");
@@ -137,12 +138,32 @@ const inactivePaymentStatuses = [
 
 const payOnBoardingPaymentStatus = "PENDING_PAY_ON_BOARDING";
 const reservedAwaitingPaymentStatus = "RESERVED_AWAITING_PAYMENT";
+const defaultPaymentMethods = ["EcoCash", "Card Payment"];
 
 const isPayOnBoardingMethod = (method) => normalizeCode(method) === "PAY_ON_BOARDING";
 const isPayOnBoardingReservation = (booking) =>
   isPayOnBoardingMethod(booking?.paymentMethod) &&
   normalizeCode(booking?.paymentStatus) === payOnBoardingPaymentStatus &&
   normalizeCode(booking?.bookingStatus || booking?.status) === reservedAwaitingPaymentStatus;
+
+const getCompanyPaymentMethods = async (companyId) => {
+  if (!companyId) return defaultPaymentMethods;
+  const company = await Company.findById(companyId, { enabledPaymentMethods: 1 }).lean();
+  return company?.enabledPaymentMethods?.length ? company.enabledPaymentMethods : defaultPaymentMethods;
+};
+
+const validateBookingPaymentMethod = async ({ requestedMethod, trip = null, bus = null, companyId = null }) => {
+  const paymentMethod = normalizeString(requestedMethod || (trip ? "Card Payment" : "Card Payment"));
+  const companyPaymentMethods = await getCompanyPaymentMethods(companyId || trip?.companyId || trip?.bus?.companyId || bus?.companyId);
+  const tripMethods = Array.isArray(trip?.acceptedPaymentMethods) && trip.acceptedPaymentMethods.length
+    ? trip.acceptedPaymentMethods.filter((method) => companyPaymentMethods.includes(method))
+    : companyPaymentMethods;
+  const allowedMethods = trip ? tripMethods : companyPaymentMethods;
+  if (!allowedMethods.includes(paymentMethod)) {
+    throw new Error(`${paymentMethod || "Selected payment method"} is not accepted for this ${trip ? "trip" : "bus"}.`);
+  }
+  return paymentMethod;
+};
 
 const internalSeatReleaseMiddleware = (req, res, next) => {
   if (!internalSeatReleaseToken) {
@@ -370,6 +391,14 @@ router.post("/book-seat", authMiddleware, async (req, res) => {
       if (!canAccessBusOrTrip(req.user, trip)) {
         return res.status(403).send({ message: "Access denied", success: false });
       }
+      try {
+        bookingData.paymentMethod = await validateBookingPaymentMethod({
+          requestedMethod: bookingData.paymentMethod,
+          trip,
+        });
+      } catch (error) {
+        return res.status(200).send({ message: error.message, success: false });
+      }
       const selectedJourneyDate = normalizeString(req.body.travelDate || req.body.journeyDate || trip.journeyDate || trip.scheduleStartDate);
       if (isPastJourneyDate(selectedJourneyDate)) {
         return res.status(200).send({
@@ -541,6 +570,14 @@ router.post("/book-seat", authMiddleware, async (req, res) => {
       }
       if (!canAccessBusOrTrip(req.user, bus)) {
         return res.status(403).send({ message: "Access denied", success: false });
+      }
+      try {
+        bookingData.paymentMethod = await validateBookingPaymentMethod({
+          requestedMethod: bookingData.paymentMethod,
+          bus,
+        });
+      } catch (error) {
+        return res.status(200).send({ message: error.message, success: false });
       }
       const selectedJourneyDate = normalizeString(req.body.travelDate || req.body.journeyDate || bus.journeyDate);
       if (isPastJourneyDate(selectedJourneyDate)) {

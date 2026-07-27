@@ -18,6 +18,7 @@ const emptyTrip = {
   operatingDays: [],
   status: "Yet To Start",
   stopSchedule: [],
+  acceptedPaymentMethods: ["EcoCash", "Card Payment"],
 };
 
 const parseClockTimeToMinutes = (value) => {
@@ -125,6 +126,7 @@ function AdminTrips() {
   const [trips, setTrips] = useState([]);
   const [routes, setRoutes] = useState([]);
   const [buses, setBuses] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [showTripForm, setShowTripForm] = useState(false);
   const [editingTrip, setEditingTrip] = useState(null);
   const [routeFilter, setRouteFilter] = useState("");
@@ -166,10 +168,20 @@ function AdminTrips() {
     }
   };
 
+  const getCompanies = async () => {
+    try {
+      const companiesResponse = await axiosInstance.get("/api/companies");
+      if (companiesResponse.data.success) setCompanies(companiesResponse.data.data || []);
+    } catch (error) {
+      message.error(error.response?.data?.message || "Failed to load company payment methods.");
+    }
+  };
+
   useEffect(() => {
     getTrips();
     getRoutes();
     getBuses();
+    getCompanies();
   }, []);
 
   const routeOptions = useMemo(
@@ -185,6 +197,14 @@ function AdminTrips() {
     [routes, selectedRouteId]
   );
   const selectedRouteCompanyId = getRecordCompanyId(selectedRoute);
+  const selectedCompany = useMemo(
+    () => companies.find((company) => String(company._id) === String(selectedRouteCompanyId)),
+    [companies, selectedRouteCompanyId]
+  );
+  const selectedCompanyPaymentMethods = useMemo(
+    () => selectedCompany?.enabledPaymentMethods?.length ? selectedCompany.enabledPaymentMethods : ["EcoCash", "Card Payment"],
+    [selectedCompany]
+  );
 
   const busOptions = useMemo(
     () =>
@@ -211,6 +231,16 @@ function AdminTrips() {
     }
   }, [buses, form, selectedRouteCompanyId, showTripForm]);
 
+  useEffect(() => {
+    if (!showTripForm) return;
+    const currentMethods = form.getFieldValue("acceptedPaymentMethods") || [];
+    const nextMethods = currentMethods.filter((method) => selectedCompanyPaymentMethods.includes(method));
+    form.setFieldValue(
+      "acceptedPaymentMethods",
+      nextMethods.length ? nextMethods : selectedCompanyPaymentMethods.slice(0, 1)
+    );
+  }, [form, selectedCompanyPaymentMethods, selectedRouteCompanyId, showTripForm]);
+
   const filteredTrips = useMemo(() => {
     if (!routeFilter) return trips;
     return trips.filter((trip) => String(trip.route?._id || trip.route || "") === String(routeFilter));
@@ -236,6 +266,7 @@ function AdminTrips() {
             runsContinuously: trip.runsContinuously !== false,
             operatingDays: tripOperatingDays,
             status: trip.status || "Yet To Start",
+            acceptedPaymentMethods: trip.acceptedPaymentMethods?.length ? trip.acceptedPaymentMethods : ["EcoCash", "Card Payment"],
             stopSchedule: buildStopScheduleFromRoute(tripRoute, trip.stopSchedule || [], trip.departureTime || ""),
           }
         : { ...emptyTrip, operatingDays: [] }
@@ -268,6 +299,7 @@ function AdminTrips() {
       const payload = {
         ...values,
         operatingDays,
+        acceptedPaymentMethods: values.acceptedPaymentMethods || [],
         stopSchedule: buildStopScheduleFromRoute(
           selectedRoute,
           form.getFieldValue("stopSchedule") || [],
@@ -340,6 +372,16 @@ function AdminTrips() {
       render: (status) => <Tag color={status === "Completed" ? "green" : status === "In Progress" ? "blue" : "orange"}>{status || "-"}</Tag>,
     },
     {
+      title: "Payment",
+      render: (_, trip) => (
+        <Space size={[4, 4]} wrap>
+          {(trip.acceptedPaymentMethods?.length ? trip.acceptedPaymentMethods : ["EcoCash", "Card Payment"]).map((method) => (
+            <Tag key={method} color={method === "Pay on Boarding" ? "gold" : "green"}>{method}</Tag>
+          ))}
+        </Space>
+      ),
+    },
+    {
       title: "Actions",
       render: (_, trip) => (
         <Space>
@@ -410,6 +452,17 @@ function AdminTrips() {
               </Form.Item>
               <Form.Item name="bus" label="Bus" rules={[{ required: true, message: "Select a bus" }]}>
                 <Select showSearch placeholder="Assign bus to this trip" optionFilterProp="label" options={busOptions} />
+              </Form.Item>
+              <Form.Item
+                name="acceptedPaymentMethods"
+                label="Accepted Payment Methods"
+                rules={[{ required: true, message: "Select at least one payment method" }]}
+              >
+                <Select
+                  mode="multiple"
+                  placeholder="Choose payment methods for this trip"
+                  options={selectedCompanyPaymentMethods.map((method) => ({ value: method, label: method }))}
+                />
               </Form.Item>
               <Form.Item label="Departure From (Start City)">
                 <input value={selectedRoute?.fromCity || ""} placeholder="Select a route first" disabled readOnly />
