@@ -147,14 +147,20 @@ function AdminRoutes() {
     },
   ];
 
-  const filteredRoutes = useMemo(() => {
+  const companyRoutes = useMemo(() => {
+    if (superAdmin && !companyFilter) return [];
     return routes.filter((route) => {
       const routeCompanyId = String(route.companyId?._id || route.companyId || "");
-      const matchesCompany = !companyFilter || routeCompanyId === String(companyFilter);
-      const matchesRoute = !routeFilter || route._id === routeFilter;
-      return matchesCompany && matchesRoute;
+      return !companyFilter || routeCompanyId === String(companyFilter);
     });
-  }, [companyFilter, routeFilter, routes]);
+  }, [companyFilter, routes, superAdmin]);
+
+  const filteredRoutes = useMemo(() => {
+    if (!routeFilter) return companyRoutes;
+    return companyRoutes.filter((route) => route._id === routeFilter);
+  }, [companyRoutes, routeFilter]);
+
+  const companySelected = !superAdmin || Boolean(companyFilter);
 
   const openAddRoute = () => {
     if (superAdmin && !companyFilter) {
@@ -169,9 +175,11 @@ function AdminRoutes() {
     <div>
       <div className="d-flex justify-content-between my-2">
         <PageTitle title="Routes" />
-        <button className="primary-btn" onClick={openAddRoute}>
-          Add Route
-        </button>
+        {companySelected && (
+          <button className="primary-btn" onClick={openAddRoute}>
+            Add Route
+          </button>
+        )}
       </div>
       <div className="admin-filter-bar">
         <Select
@@ -189,26 +197,28 @@ function AdminRoutes() {
             label: company.companyName,
           }))}
         />
-        <Select
-          allowClear
-          showSearch
-          placeholder="Filter by route"
-          value={routeFilter || undefined}
-          optionFilterProp="label"
-          onChange={(value) => setRouteFilter(value || "")}
-        >
-          {routes.map((route) => (
-            <Select.Option
-              key={route._id}
-              value={route._id}
-              label={`${route.routeName || ""} ${route.routeCode || ""}`}
-            >
-              {route.routeName} ({route.routeCode})
-            </Select.Option>
-          ))}
-        </Select>
+        {companySelected && (
+          <Select
+            allowClear
+            showSearch
+            placeholder="Filter by route"
+            value={routeFilter || undefined}
+            optionFilterProp="label"
+            onChange={(value) => setRouteFilter(value || "")}
+          >
+            {companyRoutes.map((route) => (
+              <Select.Option
+                key={route._id}
+                value={route._id}
+                label={`${route.routeName || ""} ${route.routeCode || ""}`}
+              >
+                {route.routeName} ({route.routeCode})
+              </Select.Option>
+            ))}
+          </Select>
+        )}
       </div>
-      <ResponsiveAntTable columns={columns} dataSource={filteredRoutes} rowKey="_id" cardsAlways />
+      {companySelected && <ResponsiveAntTable columns={columns} dataSource={filteredRoutes} rowKey="_id" cardsAlways />}
       {showRouteForm && (
         <RouteForm
           showRouteForm={showRouteForm}

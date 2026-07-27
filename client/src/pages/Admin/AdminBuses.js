@@ -181,14 +181,20 @@ function AdminBuses() {
     },
   ];
 
-  const filteredBuses = useMemo(() => {
+  const companyBuses = useMemo(() => {
+    if (superAdmin && !companyFilter) return [];
     return buses.filter((bus) => {
       const busCompanyId = String(bus.companyId?._id || bus.companyId || "");
-      const matchesCompany = !companyFilter || busCompanyId === String(companyFilter);
-      const matchesBus = !busFilter || bus._id === busFilter;
-      return matchesCompany && matchesBus;
+      return !companyFilter || busCompanyId === String(companyFilter);
     });
-  }, [busFilter, buses, companyFilter]);
+  }, [buses, companyFilter, superAdmin]);
+
+  const filteredBuses = useMemo(() => {
+    if (!busFilter) return companyBuses;
+    return companyBuses.filter((bus) => bus._id === busFilter);
+  }, [busFilter, companyBuses]);
+
+  const companySelected = !superAdmin || Boolean(companyFilter);
 
   useEffect(() => {
     getBuses();
@@ -208,9 +214,11 @@ function AdminBuses() {
     <div>
       <div className="d-flex justify-content-between my-2">
         <PageTitle title="Buses" />
-        <button className="primary-btn" onClick={openAddBus}>
-          Add Bus
-        </button>
+        {companySelected && (
+          <button className="primary-btn" onClick={openAddBus}>
+            Add Bus
+          </button>
+        )}
       </div>
 
       <div className="admin-filter-bar">
@@ -229,27 +237,29 @@ function AdminBuses() {
             label: company.companyName,
           }))}
         />
-        <Select
-          allowClear
-          showSearch
-          placeholder="Filter by bus"
-          value={busFilter || undefined}
-          optionFilterProp="label"
-          onChange={(value) => setBusFilter(value || "")}
-        >
-          {buses.map((bus) => (
-            <Select.Option
-              key={bus._id}
-              value={bus._id}
-              label={`${bus.name || ""} ${bus.number || ""}`}
-            >
-              {bus.name} ({bus.number})
-            </Select.Option>
-          ))}
-        </Select>
+        {companySelected && (
+          <Select
+            allowClear
+            showSearch
+            placeholder="Filter by bus"
+            value={busFilter || undefined}
+            optionFilterProp="label"
+            onChange={(value) => setBusFilter(value || "")}
+          >
+            {companyBuses.map((bus) => (
+              <Select.Option
+                key={bus._id}
+                value={bus._id}
+                label={`${bus.name || ""} ${bus.number || ""}`}
+              >
+                {bus.name} ({bus.number})
+              </Select.Option>
+            ))}
+          </Select>
+        )}
       </div>
 
-      <ResponsiveAntTable columns={columns} dataSource={filteredBuses} rowKey="_id" cardsAlways />
+      {companySelected && <ResponsiveAntTable columns={columns} dataSource={filteredBuses} rowKey="_id" cardsAlways />}
 
       {showBusForm && (
         <BusForm

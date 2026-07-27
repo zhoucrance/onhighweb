@@ -236,7 +236,7 @@ function AdminTrips() {
           value: bus._id,
           label: `${bus.name || "Bus"} ${bus.number ? `(${bus.number})` : ""}`,
         })),
-    [buses, selectedRouteCompanyId]
+    [buses, companyFilter, selectedRouteCompanyId]
   );
 
   useEffect(() => {
@@ -261,13 +261,16 @@ function AdminTrips() {
   }, [form, selectedCompanyPaymentMethods, selectedRouteCompanyId, showTripForm]);
 
   const filteredTrips = useMemo(() => {
+    if (superAdmin && !companyFilter) return [];
     return trips.filter((trip) => {
       const tripCompanyId = String(trip.companyId?._id || trip.companyId || trip.route?.companyId || trip.bus?.companyId || "");
       const matchesCompany = !companyFilter || tripCompanyId === String(companyFilter);
       const matchesRoute = !routeFilter || String(trip.route?._id || trip.route || "") === String(routeFilter);
       return matchesCompany && matchesRoute;
     });
-  }, [companyFilter, routeFilter, trips]);
+  }, [companyFilter, routeFilter, trips, superAdmin]);
+
+  const companySelected = !superAdmin || Boolean(companyFilter);
 
   const openTripForm = (trip = null) => {
     if (!trip && superAdmin && !companyFilter) {
@@ -430,9 +433,11 @@ function AdminTrips() {
     <div>
       <div className="d-flex justify-content-between align-items-center">
         <PageTitle title="Trips" />
-        <button className="primary-btn" onClick={() => openTripForm()}>
-          Add Trip
-        </button>
+        {companySelected && (
+          <button className="primary-btn" onClick={() => openTripForm()}>
+            Add Trip
+          </button>
+        )}
       </div>
 
       <div className="admin-filter-bar">
@@ -448,18 +453,20 @@ function AdminTrips() {
             label: company.companyName,
           }))}
         />
-        <Select
-          allowClear
-          showSearch
-          placeholder="Filter by route"
-          value={routeFilter || undefined}
-          optionFilterProp="label"
-          options={routeOptions}
-          onChange={(value) => setRouteFilter(value || "")}
-        />
+        {companySelected && (
+          <Select
+            allowClear
+            showSearch
+            placeholder="Filter by route"
+            value={routeFilter || undefined}
+            optionFilterProp="label"
+            options={routeOptions}
+            onChange={(value) => setRouteFilter(value || "")}
+          />
+        )}
       </div>
 
-      <ResponsiveAntTable columns={columns} dataSource={filteredTrips} rowKey="_id" cardsAlways />
+      {companySelected && <ResponsiveAntTable columns={columns} dataSource={filteredTrips} rowKey="_id" cardsAlways />}
 
       <Modal
         title={null}
