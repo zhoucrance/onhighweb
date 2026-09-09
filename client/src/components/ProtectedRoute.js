@@ -9,13 +9,30 @@ import DefaultLayout from "./DefaultLayout";
 import { getUserRole, getUserPermissions } from "../helpers/permissions";
 import { useAppStore } from "../store/useAppStore";
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, publicFallback = null }) {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.users);
   const setAuthState = useAppStore((state) => state.setAuthState);
   const clearAuthState = useAppStore((state) => state.clearAuthState);
+  const [showPublicFallback, setShowPublicFallback] = useState(
+    !localStorage.getItem("token") && Boolean(publicFallback)
+  );
 
   const navigate = useNavigate();
+
+  const rejectSession = (errorMessage) => {
+    localStorage.removeItem("token");
+    clearAuthState();
+    if (errorMessage) {
+      message.error(errorMessage);
+    }
+    if (publicFallback) {
+      setShowPublicFallback(true);
+    } else {
+      navigate("/login");
+    }
+  };
+
   const validateToken = async () => {
     try {
       dispatch(ShowLoading());
@@ -33,24 +50,18 @@ function ProtectedRoute({ children }) {
         dispatch(SetUser(response.data.data));
         setAuthState(response.data.data);
       } else {
-        localStorage.removeItem("token");
-        clearAuthState();
-        message.error(response.data.message);
-        navigate("/login");
+        rejectSession(response.data.message);
       }
     } catch (error) {
       dispatch(HideLoading());
-      localStorage.removeItem("token");
-      clearAuthState();
-
-      message.error(error.message);
-      navigate("/login");
+      rejectSession(error.message);
     }
   };
+
   useEffect(() => {
     if (localStorage.getItem("token")) {
       validateToken();
-    } else {
+    } else if (!publicFallback) {
       navigate("/login");
     }
   }, []);
@@ -69,9 +80,11 @@ function ProtectedRoute({ children }) {
     }
   }, [user]);
 
-  return (
-    <div>{user !== null && <DefaultLayout>{children}</DefaultLayout>}</div>
-  );
+  if (showPublicFallback) {
+    return publicFallback;
+  }
+
+  return <div>{user !== null && <DefaultLayout>{children}</DefaultLayout>}</div>;
 }
 
 export default ProtectedRoute;

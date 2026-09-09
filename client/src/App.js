@@ -1,9 +1,10 @@
 import "antd/dist/antd.min.css";
 import "./resourses/global.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import PublicBusBooking from "./pages/PublicBusBooking";
 import PublicRoute from "./components/PublicRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Loader from "./components/Loader";
@@ -54,7 +55,7 @@ function App() {
           <Route
             path="/"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute publicFallback={<PublicBusBooking />}>
                 <Home />
               </ProtectedRoute>
             }
@@ -180,6 +181,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/book-bus" element={<Navigate to="/" replace />} />
           <Route
             path="/register"
             element={
