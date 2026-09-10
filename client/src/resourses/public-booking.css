@@ -29,8 +29,8 @@
 .pb-shell { width: min(1180px, calc(100% - 32px)); margin-inline: auto; }
 .pb-icon { display: block; flex: 0 0 auto; }
 
-.pb-header { position: relative; z-index: 20; background: rgba(255,255,255,.94); border-bottom: 1px solid rgba(220,231,226,.85); backdrop-filter: blur(14px); }
-.pb-header-inner { min-height: 70px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.pb-header { position: relative; z-index: 20; background: rgba(255,255,255,.94); border-bottom: 1px solid rgba(220,231,226,.85); backdrop-filter: blur(14px); padding-top: env(safe-area-inset-top, 0px); }
+.pb-header-inner { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; padding-bottom: 10px; }
 .pb-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--pb-ink) !important; }
 .pb-brand-mark { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 13px; color: white; background: var(--pb-primary); box-shadow: 0 8px 20px rgba(5,131,89,.22); }
 .pb-brand > span:last-child { display: flex; align-items: baseline; gap: 5px; }
@@ -40,7 +40,7 @@
 .pb-nav > a { color: var(--pb-text) !important; font-size: 14px !important; font-weight: 700; transition: color .2s ease, transform .2s ease; }
 .pb-nav > a:hover { color: var(--pb-primary) !important; transform: translateY(-1px); }
 .pb-nav > a:not(.pb-login-link) { display: none; }
-.pb-login-link { display: inline-flex !important; align-items: center; gap: 7px; padding: 10px 14px; color: var(--pb-primary) !important; border: 1px solid rgba(5,131,89,.25); border-radius: 12px; background: var(--pb-primary-light); }
+.pb-login-link { display: inline-flex !important; align-items: center; gap: 7px; padding: 9px 15px; line-height: 1; color: var(--pb-primary) !important; border: 1px solid rgba(5,131,89,.25); border-radius: 12px; background: var(--pb-primary-light); white-space: nowrap; }
 
 .pb-hero { position: relative; padding: 42px 0 110px; background: radial-gradient(circle at 12% 25%, rgba(5,131,89,.12), transparent 28%), linear-gradient(135deg, #fbfdfc 0%, #eff9f5 100%); }
 .pb-hero::before { content: ""; position: absolute; inset: 0; opacity: .2; pointer-events: none; background-image: radial-gradient(#058359 1px, transparent 1px); background-size: 24px 24px; mask-image: linear-gradient(to bottom, black, transparent 70%); }
@@ -57,7 +57,7 @@
 .pb-hero-art { width: 100%; max-height: 320px; position: relative; z-index: 1; filter: drop-shadow(0 20px 30px rgba(7,26,77,.1)); animation: pb-art-in .75s .1s ease both; }
 .pb-bus-moving { transform-origin: 345px 220px; animation: pb-bus-breathe 3s ease-in-out infinite; }
 
-.pb-search-card { position: absolute; z-index: 5; left: 50%; bottom: -62px; transform: translateX(-50%); width: min(1120px, calc(100% - 32px)); display: grid; grid-template-columns: 1fr 44px 1fr; gap: 10px; padding: 16px; border: 1px solid rgba(220,231,226,.9); border-radius: 22px; background: rgba(255,255,255,.97); box-shadow: 0 20px 55px rgba(7,26,77,.14); animation: pb-search-rise .7s .2s ease both; }
+.pb-search-card { position: absolute; z-index: 5; left: 50%; bottom: -62px; transform: translateX(-50%); width: min(1120px, calc(100% - 32px)); display: grid; grid-template-columns: 1fr; gap: 10px; padding: 16px; border: 1px solid rgba(220,231,226,.9); border-radius: 22px; background: rgba(255,255,255,.97); box-shadow: 0 20px 55px rgba(7,26,77,.14); animation: pb-search-rise .7s .2s ease both; }
 .pb-field { min-width: 0; padding: 9px 12px; border: 1px solid var(--pb-border); border-radius: 13px; background: white; transition: border-color .2s ease, box-shadow .2s ease; }
 .pb-field:focus-within { border-color: var(--pb-primary); box-shadow: 0 0 0 3px rgba(5,131,89,.1); }
 .pb-field label { display: block; margin: 0 0 3px 30px; color: #718096; font-size: 10px !important; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
@@ -65,7 +65,7 @@
 .public-booking-page .pb-field select,
 .public-booking-page .pb-field input { width: 100%; height: 27px !important; min-width: 0; padding: 0 !important; border: 0 !important; outline: 0; color: var(--pb-ink); background: transparent; box-shadow: none !important; font-size: 14px !important; font-weight: 700; }
 .public-booking-page .pb-field select { appearance: none; cursor: pointer; }
-.pb-swap { width: 40px; height: 40px; align-self: center; display: grid; place-items: center; padding: 0; border: 1px solid var(--pb-border); color: var(--pb-primary); background: white; transition: transform .25s ease, background .2s ease; }
+.pb-swap { width: 40px; height: 40px; align-self: center; justify-self: center; display: grid; place-items: center; padding: 0; border: 1px solid var(--pb-border); color: var(--pb-primary); background: white; transition: transform .25s ease, background .2s ease; }
 .pb-swap:hover { transform: rotate(180deg); background: var(--pb-primary-light); }
 .pb-date-field { grid-column: 1 / -1; }
 .pb-search-button, .pb-continue { min-height: 52px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 0 22px; border: 0; color: white; background: var(--pb-primary); box-shadow: 0 10px 22px rgba(5,131,89,.22); font-size: 14px !important; font-weight: 800; cursor: pointer; transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
@@ -84,26 +84,46 @@
 .pb-results-list { display: grid; gap: 15px; }
 .pb-bus-card { overflow: hidden; border: 1px solid var(--pb-border); border-radius: 18px; background: white; box-shadow: 0 8px 28px rgba(7,26,77,.06); animation: pb-card-in .45s var(--delay) ease both; transition: border-color .25s ease, box-shadow .25s ease; }
 .pb-bus-card.is-open { border-color: rgba(5,131,89,.35); box-shadow: 0 16px 40px rgba(7,26,77,.1); }
-.pb-bus-summary { display: grid; grid-template-columns: 1fr auto; gap: 15px; align-items: center; padding: 18px; }
-.pb-operator { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; }
+.pb-bus-summary { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: center; padding: 18px; }
+.pb-operator { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pb-operator > div { min-width: 0; }
+.pb-operator h3, .pb-operator p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pb-operator-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; color: var(--pb-primary); background: var(--pb-primary-light); }
 .pb-operator h3 { color: var(--pb-ink); font-size: 16px !important; font-weight: 800; }
 .pb-operator p { margin-top: 3px; color: var(--pb-text); font-size: 11px !important; }
 .pb-time { display: flex; align-items: center; gap: 8px; }
 .pb-time strong { color: var(--pb-ink); font-size: 16px !important; }
 .pb-time span { display: inline-flex; align-items: center; gap: 4px; color: #7a8599; font-size: 10px !important; white-space: nowrap; }
-.pb-route-line { grid-column: 1 / -1; display: flex; align-items: center; gap: 9px; color: var(--pb-text); }
-.pb-route-line span { font-size: 11px !important; font-weight: 700; }
-.pb-route-line i { width: auto !important; height: 1px; flex: 1; position: relative; background: var(--pb-border); }
+.pb-route-line { display: flex; align-items: center; gap: 9px; color: var(--pb-text); }
+.pb-route-line span { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px !important; font-weight: 700; }
+.pb-route-line i { width: auto !important; min-width: 22px; height: 1px; flex: 1 1 22px; position: relative; background: var(--pb-border); }
 .pb-route-line i::before, .pb-route-line i::after { content: ""; position: absolute; top: -3px; width: 7px; height: 7px; border: 2px solid var(--pb-primary); border-radius: 50%; background: white; }
 .pb-route-line i::before { left: 0; }.pb-route-line i::after { right: 0; }
 .pb-amenities { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 7px; }
 .pb-amenities span { display: inline-flex; align-items: center; gap: 3px; padding: 5px 8px; border-radius: 999px; color: var(--pb-primary-dark); background: var(--pb-primary-light); font-size: 9px !important; font-weight: 700; }
-.pb-price { text-align: left; }
-.pb-price span, .pb-price small { display: block; color: #718096; font-size: 9px !important; }
-.pb-price strong { display: block; color: var(--pb-ink); font-size: 21px !important; line-height: 1.15; }
-.pb-price small { color: var(--pb-secondary); font-weight: 700; }
-.pb-view-seats { justify-self: end; min-height: 43px; padding: 0 16px; border: 0; color: white; background: var(--pb-secondary); font-size: 12px !important; font-weight: 800; cursor: pointer; transition: transform .2s ease, background .2s ease; }
+/* Price and the seats button share the bottom row on mobile, divided by a
+   hairline so the card reads as summary-on-the-left, action-on-the-right. */
+.pb-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 7px; padding-top: 13px; border-top: 1px solid var(--pb-border); text-align: left; }
+.pb-price span, .pb-price small { color: #718096; font-size: 10px !important; }
+.pb-price strong { flex: 0 0 auto; color: var(--pb-ink); font-size: 22px !important; line-height: 1.1; }
+.pb-price small { flex: 1 1 100%; color: var(--pb-secondary); font-weight: 700; }
+.pb-view-seats {
+  width: 100%;
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  border: 0;
+  color: white;
+  background: var(--pb-secondary);
+  font-size: 13px !important;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform .2s ease, background .2s ease;
+}
 .pb-view-seats:hover { transform: translateY(-2px); background: #8e341c; }
 
 .pb-seat-panel { display: grid; gap: 18px; padding: 18px; border-top: 1px solid var(--pb-border); background: #fbfdfc; animation: pb-panel-in .38s ease both; }
@@ -178,8 +198,14 @@
   .pb-date-field { grid-column: auto; }
   .pb-search-button { grid-column: 1 / -1; }
   .pb-results-heading > button { display: block; }
-  .pb-bus-summary { grid-template-columns: minmax(220px, 1.4fr) minmax(190px, 1fr) auto; }
-  .pb-operator { grid-column: auto; }.pb-time { justify-content: center; }.pb-route-line { grid-column: 1 / 3; }.pb-amenities { grid-column: 1 / 3; }.pb-price { grid-column: 3; grid-row: 1; text-align: right; }.pb-view-seats { grid-column: 3; grid-row: 2 / 4; }
+  .pb-bus-summary { grid-template-columns: minmax(200px, 1.4fr) minmax(170px, 1fr) minmax(150px, auto); }
+  .pb-operator { grid-column: 1 / 3; }
+  .pb-time { justify-content: center; }
+  .pb-route-line { grid-column: 1 / 3; }
+  .pb-amenities { grid-column: 1 / 3; }
+  .pb-price { grid-column: 3; grid-row: 1; flex-direction: column; align-items: flex-end; gap: 0; padding-top: 0; border-top: 0; text-align: right; }
+  .pb-price span, .pb-price strong, .pb-price small { flex: none; }
+  .pb-view-seats { grid-column: 3; grid-row: 2 / 4; width: auto; justify-self: end; align-self: center; }
   .pb-seat-heading { grid-template-columns: 1fr auto; align-items: end; }
   .pb-steps, .pb-route-cards { grid-template-columns: repeat(3, 1fr); }
   .pb-section-heading { grid-template-columns: 1fr auto; align-items: end; }
@@ -223,4 +249,470 @@
     animation-name: pb-card-in;
   }
   .pb-results-section { padding-top: 58px; }
+}
+
+/* ---------------------------------------------------------------------------
+   Searchable dropdown + calendar date field
+   Both live inside .pb-field, so they inherit the field's focus ring.
+--------------------------------------------------------------------------- */
+
+/* Popovers anchor to the whole field (not the control next to the icon), so
+   they line up with the field edges instead of starting 43px inside it. */
+.pb-field { position: relative; }
+.pb-combo,
+.pb-datepicker { flex: 1 1 auto; min-width: 0; }
+
+/* Shared trigger row: matches the height/weight of the inputs it replaced. */
+.public-booking-page .pb-combo-trigger {
+  width: 100%;
+  height: 27px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent;
+  color: var(--pb-ink);
+  font-size: 14px !important;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.pb-combo-value { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pb-combo-value.is-placeholder { color: #93a1b5; font-weight: 600; }
+.pb-combo-caret { color: var(--pb-primary); transition: transform .25s ease; }
+.pb-combo.is-open .pb-combo-caret,
+.pb-datepicker.is-open .pb-combo-caret { transform: rotate(180deg); }
+
+/* Popovers */
+.pb-combo-pop,
+.pb-cal-pop {
+  position: absolute;
+  z-index: 70;
+  top: calc(100% + 9px);
+  left: -1px;
+  right: -1px;
+  padding: 10px;
+  border: 1px solid var(--pb-border);
+  border-radius: 16px;
+  background: var(--pb-white);
+  box-shadow: 0 18px 44px rgba(7,26,77,.16);
+  transform-origin: top center;
+  animation: pb-pop-in .2s cubic-bezier(.2,.9,.3,1) both;
+}
+/* Little pointer tying the popover to the field. */
+.pb-combo-pop::before,
+.pb-cal-pop::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 20px;
+  width: 10px;
+  height: 10px;
+  border-top: 1px solid var(--pb-border);
+  border-left: 1px solid var(--pb-border);
+  border-radius: 2px 0 0 0;
+  background: var(--pb-white);
+  transform: rotate(45deg);
+}
+/* Stacked on mobile, so the swap arrows should read vertically. */
+.pb-swap svg { transition: transform .25s ease; transform: rotate(90deg); }
+
+/* Search box inside the dropdown */
+.pb-combo-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--pb-border);
+  border-radius: 12px;
+  background: var(--pb-muted);
+  color: var(--pb-primary);
+  transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+.pb-combo-search:focus-within {
+  border-color: var(--pb-primary);
+  background: var(--pb-white);
+  box-shadow: 0 0 0 3px rgba(5,131,89,.1);
+}
+/* Three classes so it outranks `.public-booking-page .pb-field input`. */
+.public-booking-page .pb-field .pb-combo-search-input {
+  width: 100%;
+  height: 22px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  outline: 0;
+  background: transparent;
+  color: var(--pb-ink);
+  font-size: 13px !important;
+  font-weight: 600;
+}
+.public-booking-page .pb-field .pb-combo-search-input::placeholder { color: #9aa7ba; font-weight: 500; }
+
+/* Options */
+.pb-combo-list { max-height: 214px; margin: 8px 0 0; padding: 0; overflow-y: auto; list-style: none; }
+.pb-combo-list::-webkit-scrollbar { width: 6px; }
+.pb-combo-list::-webkit-scrollbar-thumb { border-radius: 99px; background: rgba(7,26,77,.18); }
+.pb-combo-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 11px;
+  color: var(--pb-ink);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  animation: pb-option-in .22s ease both;
+  animation-delay: calc(var(--i, 0) * 22ms);
+  transition: background .16s ease, color .16s ease, transform .16s ease;
+}
+.pb-combo-option.is-active { background: var(--pb-primary-light); transform: translateX(2px); }
+.pb-combo-option.is-selected { color: var(--pb-primary); }
+.pb-combo-option svg { color: var(--pb-primary); }
+.pb-combo-option mark { padding: 0 1px; border-radius: 4px; background: rgba(172,68,37,.16); color: inherit; font-weight: 800; }
+.pb-combo-empty { padding: 15px 11px; color: var(--pb-text); font-size: 13px; text-align: center; }
+
+/* Calendar */
+.pb-cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 11px; }
+.pb-cal-title { color: var(--pb-ink); font-size: 14px; font-weight: 800; letter-spacing: -.2px; }
+.public-booking-page .pb-cal-nav {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0 !important;
+  border: 1px solid var(--pb-border) !important;
+  border-radius: 10px !important;
+  color: var(--pb-primary);
+  background: var(--pb-white);
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease, transform .18s ease;
+}
+.public-booking-page .pb-cal-nav:hover:not(:disabled) { background: var(--pb-primary-light); border-color: rgba(5,131,89,.32) !important; }
+.public-booking-page .pb-cal-nav:active:not(:disabled) { transform: scale(.93); }
+.public-booking-page .pb-cal-nav:disabled { opacity: .38; cursor: not-allowed; }
+
+.pb-cal-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 11px; }
+.public-booking-page .pb-cal-chip {
+  padding: 6px 12px;
+  border: 1px solid var(--pb-border) !important;
+  border-radius: 99px !important;
+  color: var(--pb-text);
+  background: var(--pb-white);
+  font-size: 11.5px !important;
+  font-weight: 800;
+  cursor: pointer;
+  transition: color .18s ease, background .18s ease, border-color .18s ease, transform .18s ease;
+}
+.public-booking-page .pb-cal-chip:hover {
+  color: var(--pb-primary);
+  border-color: rgba(5,131,89,.35) !important;
+  background: var(--pb-primary-light);
+  transform: translateY(-1px);
+}
+.public-booking-page .pb-cal-chip.is-active { color: white; border-color: var(--pb-primary) !important; background: var(--pb-primary); }
+
+.pb-cal-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.pb-cal-weekdays { margin-bottom: 5px; }
+.pb-cal-weekdays span { padding: 3px 0; color: #93a1b5; font-size: 10px; font-weight: 800; letter-spacing: .8px; text-align: center; text-transform: uppercase; }
+.pb-cal-grid { display: grid; gap: 4px; }
+.pb-cal-grid.pb-cal-from-next { animation: pb-month-next .26s ease both; }
+.pb-cal-grid.pb-cal-from-prev { animation: pb-month-prev .26s ease both; }
+.pb-cal-empty { aspect-ratio: 1 / 1; }
+.public-booking-page .pb-cal-day {
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 11px !important;
+  color: var(--pb-ink);
+  background: transparent;
+  font-size: 13px !important;
+  font-weight: 700;
+  cursor: pointer;
+  animation: pb-day-in .24s ease both;
+  animation-delay: calc(var(--i, 0) * 10ms);
+  transition: background .16s ease, color .16s ease, transform .16s ease, box-shadow .16s ease;
+}
+.public-booking-page .pb-cal-day:hover:not(:disabled) { background: var(--pb-primary-light); color: var(--pb-primary-dark); transform: scale(1.09); }
+.public-booking-page .pb-cal-day:disabled { color: #c6cedb; cursor: not-allowed; }
+.public-booking-page .pb-cal-day.is-today { box-shadow: inset 0 0 0 1.5px rgba(5,131,89,.45); }
+.public-booking-page .pb-cal-day.is-selected {
+  color: white;
+  background: var(--pb-primary);
+  box-shadow: 0 8px 18px rgba(5,131,89,.3);
+  transform: scale(1.02);
+}
+.public-booking-page .pb-cal-day.is-selected:hover { color: white; background: var(--pb-primary-dark); }
+
+@keyframes pb-pop-in { from { opacity: 0; transform: translateY(-7px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes pb-option-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pb-day-in { from { opacity: 0; transform: translateY(4px) scale(.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes pb-month-next { from { opacity: 0; transform: translateX(15px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes pb-month-prev { from { opacity: 0; transform: translateX(-15px); } to { opacity: 1; transform: translateX(0); } }
+
+/* Mobile keeps every field full width, so each popover simply matches its
+   field (left/right: -12px above) and nothing can be clipped.
+
+   From 600px up the fields sit side by side and become too narrow to hold a
+   popover, so each one breaks out to a comfortable width and anchors towards
+   the side with room: left-hand fields open rightwards, right-hand fields
+   (To, Travel date) open leftwards, so nothing runs off screen. */
+@media (min-width: 600px) {
+  .pb-swap svg { transform: none; }
+
+  .pb-combo-pop { min-width: min(250px, calc(100vw - 24px)); }
+  .pb-align-start .pb-combo-pop { left: -1px; right: auto; }
+  .pb-align-end .pb-combo-pop { left: auto; right: -1px; }
+  .pb-align-end .pb-combo-pop::before { left: auto; right: 20px; }
+
+  .pb-cal-pop { left: auto; right: -1px; width: min(322px, calc(100vw - 24px)); }
+  .pb-cal-pop::before { left: auto; right: 20px; }
+}
+
+/* ---------------------------------------------------------------------------
+   Booking bottom sheet (seats -> pickup/drop -> passenger details)
+--------------------------------------------------------------------------- */
+
+.pb-sheet-root { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: flex-end; justify-content: center; }
+.pb-sheet-backdrop { position: absolute; inset: 0; background: rgba(7,26,77,.55); backdrop-filter: blur(3px); animation: pb-sheet-fade .24s ease both; }
+.pb-sheet-root.is-closing .pb-sheet-backdrop { animation: pb-sheet-fade .24s ease both reverse; }
+
+.pb-sheet {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  /* Covers the full screen at every size. dvh keeps the height correct while
+     the mobile browser URL bar collapses (100vh would overflow). */
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  border-radius: 0;
+  background: var(--pb-white);
+  animation: pb-sheet-up .3s cubic-bezier(.2,.9,.28,1) both;
+  overflow: hidden;
+}
+.pb-sheet-root.is-closing .pb-sheet { animation: pb-sheet-down .26s ease both; }
+
+/* Header: close button pinned left, route beside it. */
+.pb-sheet-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* Clears the status bar / notch when running full screen. */
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 13px;
+  border-bottom: 1px solid var(--pb-border);
+}
+/* Grab handle only makes sense once it is a sheet rather than a full screen. */
+.pb-sheet-head::before {
+  content: "";
+  display: none;
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  width: 42px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--pb-border);
+  transform: translateX(-50%);
+}
+.public-booking-page .pb-sheet-close {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0 !important;
+  border: 1px solid var(--pb-border) !important;
+  border-radius: 12px !important;
+  color: var(--pb-ink);
+  background: var(--pb-white);
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease, transform .18s ease;
+}
+.public-booking-page .pb-sheet-close:hover { color: var(--pb-secondary); background: #fff2ec; }
+.public-booking-page .pb-sheet-close:active { transform: scale(.93); }
+.pb-sheet-title { min-width: 0; }
+.pb-sheet-title h2 { color: var(--pb-ink); font-size: 17px !important; font-weight: 800; letter-spacing: -.4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-sheet-title h2 span { color: var(--pb-secondary); }
+.pb-sheet-title p { margin-top: 3px; color: var(--pb-text); font-size: 11px !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Tabs */
+.pb-sheet-tabs { flex: 0 0 auto; display: flex; gap: 4px; padding: 10px 10px 0; border-bottom: 1px solid var(--pb-border); overflow-x: auto; scrollbar-width: none; }
+.pb-sheet-tabs::-webkit-scrollbar { display: none; }
+.public-booking-page .pb-sheet-tab {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 104px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 11px 10px 13px;
+  border: 0 !important;
+  border-radius: 12px 12px 0 0 !important;
+  color: var(--pb-text);
+  background: transparent;
+  font-size: 12px !important;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color .2s ease, background .2s ease;
+}
+.public-booking-page .pb-sheet-tab:hover { color: var(--pb-primary); background: var(--pb-muted); }
+.public-booking-page .pb-sheet-tab.is-active { color: var(--pb-primary); }
+/* animated active underline */
+.public-booking-page .pb-sheet-tab::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--pb-primary);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform .26s cubic-bezier(.2,.9,.28,1);
+}
+.public-booking-page .pb-sheet-tab.is-active::after { transform: scaleX(1); }
+.pb-tab-mark {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--pb-text);
+  background: var(--pb-muted);
+  box-shadow: inset 0 0 0 1px var(--pb-border);
+  font-size: 10px;
+  font-weight: 800;
+  transition: color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+.pb-sheet-tab.is-active .pb-tab-mark { color: white; background: var(--pb-primary); box-shadow: none; }
+.pb-sheet-tab.is-done .pb-tab-mark { color: white; background: var(--pb-primary); box-shadow: none; }
+.pb-tab-label { overflow: hidden; text-overflow: ellipsis; }
+
+/* Scrolling body + per-step animation */
+.pb-sheet-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; background: #fbfdfc; }
+.pb-sheet-panel { animation: pb-panel-slide .3s ease both; }
+.pb-sheet-panel-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px; margin-bottom: 13px; }
+.pb-sheet-panel-head--spaced { margin-top: 22px; }
+.pb-sheet-panel-head h3 { margin-top: 4px; color: var(--pb-ink); font-size: 15px !important; font-weight: 800; }
+.pb-sheet-note { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 14px; color: var(--pb-text); font-size: 11px !important; font-weight: 700; }
+.pb-sheet-note svg { color: var(--pb-primary); }
+.pb-sheet-empty { padding: 18px; border: 1px dashed var(--pb-border); border-radius: 14px; color: var(--pb-text); background: white; font-size: 12px !important; text-align: center; }
+
+/* Pickup / drop point list */
+.pb-point-list { display: grid; gap: 9px; }
+.pb-point {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 14px;
+  border: 1px solid var(--pb-border);
+  border-radius: 14px;
+  background: white;
+  cursor: pointer;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease, background .18s ease;
+}
+.pb-point:hover { border-color: rgba(5,131,89,.4); transform: translateY(-1px); }
+.pb-point input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.pb-point-dot { flex: 0 0 auto; width: 18px; height: 18px; border: 2px solid var(--pb-border); border-radius: 50%; background: white; transition: border-color .18s ease, box-shadow .18s ease; }
+.pb-point.is-selected { border-color: var(--pb-primary); background: var(--pb-primary-light); box-shadow: 0 8px 20px rgba(5,131,89,.14); }
+.pb-point.is-selected .pb-point-dot { border-color: var(--pb-primary); box-shadow: inset 0 0 0 4px var(--pb-primary); }
+.pb-point:focus-within { border-color: var(--pb-primary); box-shadow: 0 0 0 3px rgba(5,131,89,.14); }
+.pb-point-text { display: grid; gap: 2px; min-width: 0; }
+.pb-point-text strong { color: var(--pb-ink); font-size: 13px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-point-text small { color: var(--pb-text); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-point-time { flex: 0 0 auto; margin-left: auto; color: var(--pb-primary-dark); font-size: 13px; font-weight: 800; }
+
+/* Passenger form */
+.pb-form-grid { display: grid; gap: 11px; }
+.pb-input { display: grid; gap: 5px; min-width: 0; }
+.pb-input > span { color: #718096; font-size: 10px !important; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; }
+.pb-input > span small { font-size: 9px !important; font-weight: 700; letter-spacing: .4px; text-transform: none; }
+.public-booking-page .pb-input input {
+  width: 100%;
+  height: 44px !important;
+  padding: 0 13px !important;
+  border: 1px solid var(--pb-border) !important;
+  border-radius: 12px !important;
+  color: var(--pb-ink);
+  background: white;
+  font-size: 14px !important;
+  font-weight: 700;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.public-booking-page .pb-input input:focus { outline: 0; border-color: var(--pb-primary) !important; box-shadow: 0 0 0 3px rgba(5,131,89,.12); }
+.public-booking-page .pb-input input::placeholder { color: #a7b2c2; font-weight: 500; }
+
+.pb-passenger-list { display: grid; gap: 11px; }
+.pb-passenger { padding: 13px; border: 1px solid var(--pb-border); border-radius: 15px; background: white; animation: pb-panel-slide .28s ease both; }
+.pb-passenger-seat { display: inline-flex; padding: 4px 10px; border-radius: 99px; color: var(--pb-primary-dark); background: var(--pb-primary-light); font-size: 10px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; }
+.pb-passenger-fields { display: grid; gap: 10px; margin-top: 11px; }
+.pb-gender { display: flex; gap: 6px; }
+.public-booking-page .pb-gender button {
+  flex: 1 1 auto;
+  height: 44px;
+  padding: 0 !important;
+  border: 1px solid var(--pb-border) !important;
+  border-radius: 12px !important;
+  color: var(--pb-text);
+  background: white;
+  font-size: 13px !important;
+  font-weight: 800;
+  cursor: pointer;
+  transition: color .18s ease, background .18s ease, border-color .18s ease;
+}
+.public-booking-page .pb-gender button.is-active { color: white; border-color: var(--pb-primary) !important; background: var(--pb-primary); }
+
+/* Sticky footer */
+.pb-sheet-foot { flex: 0 0 auto; padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--pb-border); background: var(--pb-white); box-shadow: 0 -6px 18px rgba(7,26,77,.05); }
+.pb-sheet-hint { margin-bottom: 10px; padding: 9px 12px; border-left: 3px solid var(--pb-secondary); border-radius: 9px; color: #8e341c; background: #fff4ef; font-size: 11.5px !important; font-weight: 700; animation: pb-fade-up .24s ease both; }
+.pb-sheet-foot-row { display: flex; align-items: center; gap: 12px; }
+.pb-sheet-total { display: grid; gap: 1px; min-width: 0; }
+.pb-sheet-total span { color: var(--pb-text); font-size: 10.5px !important; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-sheet-total strong { color: var(--pb-primary); font-size: 21px !important; line-height: 1.1; }
+.pb-sheet-foot .pb-continue { width: auto; flex: 1 1 auto; max-width: 60%; min-height: 48px; }
+.pb-sheet-secure { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 9px; color: #8d97a8; font-size: 9.5px !important; }
+.pb-sheet-secure svg { color: var(--pb-primary); }
+
+@keyframes pb-sheet-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pb-sheet-up { from { opacity: .6; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pb-sheet-down { from { opacity: 1; transform: translateY(0); } to { opacity: .4; transform: translateY(100%); } }
+@keyframes pb-panel-slide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* The panel itself always fills the screen. Larger screens only get roomier
+   padding and a readable content column, so nothing stretches edge to edge. */
+@media (min-width: 600px) {
+  .pb-sheet-head { padding: 18px 20px 14px; }
+  .pb-sheet-title h2 { font-size: 19px !important; }
+  .pb-sheet-body { padding: 22px 20px; }
+  .pb-sheet-panel { max-width: 820px; margin-inline: auto; }
+  .pb-sheet-foot { padding: 14px 20px calc(16px + env(safe-area-inset-bottom, 0px)); }
+  .pb-sheet-hint,
+  .pb-sheet-foot-row,
+  .pb-sheet-secure { max-width: 820px; margin-inline: auto; }
+  .pb-form-grid { grid-template-columns: 1fr 1fr; }
+  .pb-input--wide { grid-column: 1 / -1; }
+  .pb-passenger-fields { grid-template-columns: 1fr 88px 118px; align-items: end; }
+}
+
+@media (min-width: 900px) {
+  .pb-sheet-head,
+  .pb-sheet-tabs { padding-inline: 28px; }
+  .pb-sheet-body { padding: 26px 28px; }
+  .pb-sheet-foot { padding: 16px 28px calc(18px + env(safe-area-inset-bottom, 0px)); }
+  /* Keep the tab row from stretching into three enormous targets. */
+  .pb-sheet-tabs { justify-content: center; }
+  .public-booking-page .pb-sheet-tab { flex: 0 1 220px; }
 }

@@ -1,5 +1,8 @@
 import React, { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import PbSearchableSelect from "../components/PbSearchableSelect";
+import PbDatePicker from "../components/PbDatePicker";
+import PbBookingSheet from "../components/PbBookingSheet";
 import "../resourses/public-booking.css";
 
 const cities = [
@@ -174,15 +177,31 @@ function PublicBusBooking() {
   };
 
   const openSeats = (busId) => {
-    setActiveBus((current) => (current === busId ? null : busId));
+    setActiveBus(busId);
     setSelectedSeats([]);
     setMessage("");
   };
 
-  const toggleSeat = (seat, bookedSeats) => {
-    if (bookedSeats.includes(seat)) return;
+  const closeSheet = () => setActiveBus(null);
+
+  const activeBusDetails = useMemo(
+    () => buses.find((bus) => bus.id === activeBus) || null,
+    [activeBus]
+  );
+
+  const toggleSeat = (seat) => {
+    if (activeBusDetails?.bookedSeats.includes(seat)) return;
     setSelectedSeats((current) =>
       current.includes(seat) ? current.filter((item) => item !== seat) : [...current, seat].sort((a, b) => a - b)
+    );
+  };
+
+  const confirmBooking = (details) => {
+    setActiveBus(null);
+    setMessage(
+      `Booking held for ${details.contact.name || "your trip"} · seat${
+        details.seats.length > 1 ? "s" : ""
+      } ${details.seats.join(", ")} · pickup at ${details.pickupPoint?.name} · US$${details.total}. Payment will be connected in the next phase.`
     );
   };
 
@@ -225,16 +244,46 @@ function PublicBusBooking() {
         <form className="pb-search-card" onSubmit={searchBuses} aria-label="Search buses">
           <div className="pb-field">
             <label htmlFor="pb-from">From</label>
-            <span className="pb-field-control"><Icon name="pin" /><select id="pb-from" value={from} onChange={(event) => setFrom(event.target.value)}>{cities.map((city) => <option key={city}>{city}</option>)}</select></span>
+            <span className="pb-field-control">
+              <Icon name="pin" />
+              <PbSearchableSelect
+                id="pb-from"
+                value={from}
+                options={cities}
+                onChange={setFrom}
+                placeholder="Departure city"
+                searchPlaceholder="Search departure city…"
+              />
+            </span>
           </div>
           <button className="pb-swap" type="button" onClick={swapCities} aria-label="Swap departure and destination"><Icon name="swap" size={19} /></button>
           <div className="pb-field">
             <label htmlFor="pb-to">To</label>
-            <span className="pb-field-control"><Icon name="pin" /><select id="pb-to" value={to} onChange={(event) => setTo(event.target.value)}>{cities.map((city) => <option key={city}>{city}</option>)}</select></span>
+            <span className="pb-field-control">
+              <Icon name="pin" />
+              <PbSearchableSelect
+                id="pb-to"
+                value={to}
+                options={cities}
+                onChange={setTo}
+                align="end"
+                placeholder="Destination city"
+                searchPlaceholder="Search destination…"
+              />
+            </span>
           </div>
           <div className="pb-field pb-date-field">
             <label htmlFor="pb-date">Travel date</label>
-            <span className="pb-field-control"><Icon name="calendar" /><input id="pb-date" type="date" min={today} value={journeyDate} required onChange={(event) => setJourneyDate(event.target.value)} /></span>
+            <span className="pb-field-control">
+              <Icon name="calendar" />
+              <PbDatePicker
+                id="pb-date"
+                value={journeyDate}
+                min={today}
+                onChange={setJourneyDate}
+                placeholder="Choose a travel date"
+              />
+            </span>
           </div>
           <button className="pb-search-button" type="submit" disabled={isSearching}>
             {isSearching ? <><span className="pb-spinner" /> Finding buses</> : <>Search buses <Icon name="arrow" size={18} /></>}
@@ -262,41 +311,9 @@ function PublicBusBooking() {
                       <div className="pb-route-line"><span>{from}</span><i /><span>{to}</span></div>
                       <div className="pb-amenities">{bus.amenities.map((amenity) => <span key={amenity}><Icon name="check" size={14} /> {amenity}</span>)}</div>
                       <div className="pb-price"><span>From</span><strong>US${bus.price}</strong><small>{bus.seatsLeft} seats left</small></div>
-                      <button className="pb-view-seats" type="button" onClick={() => openSeats(bus.id)} aria-expanded={isOpen}>{isOpen ? "Hide seats" : "View seats"}</button>
+                      <button className="pb-view-seats" type="button" onClick={() => openSeats(bus.id)} aria-haspopup="dialog">View seats</button>
                     </div>
 
-                    {isOpen && (
-                      <div className="pb-seat-panel">
-                        <div className="pb-seat-picker">
-                          <div className="pb-seat-heading"><div><span className="pb-section-label">Choose seats</span><h3>Front of bus</h3></div><div className="pb-seat-legend"><span><i className="available" /> Available</span><span><i className="selected" /> Selected</span><span><i className="booked" /> Booked</span></div></div>
-                          <div className="pb-coach">
-                            <div className="pb-driver" aria-label="Driver position">Driver</div>
-                            <div className="pb-seat-rows">
-                              {Array.from({ length: 8 }, (_, row) => (
-                                <div className="pb-seat-row" key={row}>
-                                  {[1, 2, 3, 4].map((position) => {
-                                    const seat = row * 4 + position;
-                                    const isBooked = bus.bookedSeats.includes(seat);
-                                    const isSelected = selectedSeats.includes(seat);
-                                    return <React.Fragment key={seat}>{position === 3 && <span className="pb-aisle" aria-hidden="true" />}<button type="button" className={`pb-seat ${isBooked ? "is-booked" : ""} ${isSelected ? "is-selected" : ""}`} disabled={isBooked} onClick={() => toggleSeat(seat, bus.bookedSeats)} aria-label={`Seat ${seat}${isBooked ? ", booked" : isSelected ? ", selected" : ", available"}`} aria-pressed={isSelected}>{seat}</button></React.Fragment>;
-                                  })}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-
-                        <aside className="pb-fare-card">
-                          <span className="pb-section-label">Your journey</span>
-                          <h3>{from} <span>→</span> {to}</h3>
-                          <p>{readableDate} · {bus.departure}</p>
-                          <dl><div><dt>Boarding</dt><dd>{bus.boarding}</dd></div><div><dt>Selected seats</dt><dd>{selectedSeats.length ? selectedSeats.join(", ") : "None"}</dd></div><div><dt>Ticket fare</dt><dd>US${bus.price} × {selectedSeats.length}</dd></div></dl>
-                          <div className="pb-total"><span>Total</span><strong>US${bus.price * selectedSeats.length}</strong></div>
-                          <button type="button" className="pb-continue" disabled={!selectedSeats.length} onClick={() => setMessage("Passenger details and payment will be connected in the next phase.")}>Continue</button>
-                          <small><Icon name="shield" size={15} /> No payment is taken in this UI preview.</small>
-                        </aside>
-                      </div>
-                    )}
                   </article>
                 );
               })}
@@ -326,6 +343,18 @@ function PublicBusBooking() {
           </div>
         </div>
       </section>
+
+      <PbBookingSheet
+        open={Boolean(activeBus)}
+        bus={activeBusDetails}
+        from={from}
+        to={to}
+        readableDate={readableDate}
+        selectedSeats={selectedSeats}
+        onToggleSeat={toggleSeat}
+        onClose={closeSheet}
+        onSubmit={confirmBooking}
+      />
 
       <footer className="pb-footer">
         <div className="pb-shell pb-footer-inner"><div className="pb-brand pb-brand--footer"><span className="pb-brand-mark"><Icon name="bus" size={24} /></span><span><strong>OnHigh</strong><small>BUS</small></span></div><p>Making every journey feel simple.</p><span>© {new Date().getFullYear()} OnHigh Bus</span></div>
