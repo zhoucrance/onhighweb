@@ -716,3 +716,147 @@
   .pb-sheet-tabs { justify-content: center; }
   .public-booking-page .pb-sheet-tab { flex: 0 1 220px; }
 }
+
+/* ---------------------------------------------------------------------------
+   Booking sheet: bus photo + scrollable info tabs (mobile-first)
+--------------------------------------------------------------------------- */
+
+/* Bus photo shown alongside the seat map inside the sheet */
+.pb-bus-photo {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 7;
+  margin-bottom: 14px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--pb-border);
+  box-shadow: 0 8px 22px rgba(7, 26, 77, 0.08);
+  animation: pb-panel-slide 0.32s ease both;
+}
+.pb-bus-photo svg { display: block; width: 100%; height: 100%; }
+.pb-bus-photo-tag {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(7, 26, 77, 0.62);
+  backdrop-filter: blur(3px);
+  font-size: 10px !important;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+/* Info tabs block */
+.pb-info { margin-top: 18px; }
+.pb-info-bar { display: flex; align-items: center; gap: 6px; }
+.public-booking-page .pb-info-arrow {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--pb-border);
+  border-radius: 999px !important;
+  color: var(--pb-primary);
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.18s ease, color 0.18s ease;
+}
+.public-booking-page .pb-info-arrow:hover { color: #fff; background: var(--pb-primary); }
+.public-booking-page .pb-info-arrow:active { transform: scale(0.9); }
+
+.pb-info-strip {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px;
+  scroll-snap-type: x proximity;
+}
+.pb-info-strip::-webkit-scrollbar { display: none; }
+
+.public-booking-page .pb-info-chip {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 13px;
+  border: 1px solid var(--pb-border);
+  border-radius: 999px !important;
+  color: var(--pb-text);
+  background: #fff;
+  font-size: 11px !important;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+.public-booking-page .pb-info-chip svg { color: var(--pb-primary); transition: color 0.18s ease; }
+.public-booking-page .pb-info-chip:hover { border-color: rgba(5, 131, 89, 0.4); }
+.public-booking-page .pb-info-chip.is-active {
+  color: #fff;
+  background: var(--pb-primary);
+  border-color: var(--pb-primary);
+}
+.public-booking-page .pb-info-chip.is-active svg { color: #fff; }
+
+.pb-info-panel {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--pb-border);
+  border-radius: 14px;
+  background: #fff;
+  animation: pb-panel-slide 0.28s ease both;
+}
+.pb-info-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 9px; }
+.pb-info-list li {
+  position: relative;
+  padding-left: 16px;
+  color: var(--pb-text);
+  font-size: 12px !important;
+  line-height: 1.5;
+}
+.pb-info-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pb-primary);
+}
+.pb-info-list li strong { color: var(--pb-ink); }
+.pb-info-list li small { display: block; color: #8a94a6; font-size: 10px !important; }
+
+.pb-info-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.pb-info-chips span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: var(--pb-primary);
+  background: var(--pb-muted);
+  font-size: 11px !important;
+  font-weight: 700;
+}
+.pb-info-chips span svg { color: var(--pb-primary); }
+
+.pb-info-rating { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.pb-info-rating strong { color: var(--pb-ink); font-size: 22px !important; }
+.pb-info-rating span { color: #f4b860; font-size: 14px !important; letter-spacing: 1px; }
+.pb-info-rating small { color: #8a94a6; font-size: 10px !important; }
+
+/* On wider viewports, show the photo beside the seat map */
+@media (min-width: 760px) {
+  .pb-sheet-panel .pb-bus-photo { max-width: 340px; }
+}
