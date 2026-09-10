@@ -721,35 +721,114 @@
    Booking sheet: bus photo + scrollable info tabs (mobile-first)
 --------------------------------------------------------------------------- */
 
-/* Bus photo shown alongside the seat map inside the sheet */
-.pb-bus-photo {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 7;
-  margin-bottom: 14px;
-  border-radius: 16px;
-  overflow: hidden;
+/* One card holding the swipeable photo gallery and the info tabs */
+.pb-media-card {
+  margin-bottom: 16px;
+  padding: 10px;
   border: 1px solid var(--pb-border);
-  box-shadow: 0 8px 22px rgba(7, 26, 77, 0.08);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(7, 26, 77, 0.07);
   animation: pb-panel-slide 0.32s ease both;
 }
-.pb-bus-photo svg { display: block; width: 100%; height: 100%; }
-.pb-bus-photo-tag {
+
+/* Swipeable gallery */
+.pb-gallery {
+  position: relative;
+  border-radius: 13px;
+  overflow: hidden;
+  background: var(--pb-muted);
+}
+.pb-gallery-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.pb-gallery-track::-webkit-scrollbar { display: none; }
+.pb-gallery-slide {
+  position: relative;
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  margin: 0;
+  aspect-ratio: 16 / 8;
+}
+.pb-gallery-slide svg { display: block; width: 100%; height: 100%; }
+.pb-gallery-slide figcaption {
   position: absolute;
   left: 10px;
-  bottom: 10px;
-  padding: 5px 10px;
+  bottom: 9px;
+  padding: 4px 9px;
   border-radius: 999px;
   color: #fff;
-  background: rgba(7, 26, 77, 0.62);
+  background: rgba(7, 26, 77, 0.6);
   backdrop-filter: blur(3px);
-  font-size: 10px !important;
-  font-weight: 800;
-  letter-spacing: 0.3px;
+  font-size: 9px !important;
+  font-weight: 700;
 }
 
-/* Info tabs block */
-.pb-info { margin-top: 18px; }
+.public-booking-page .pb-gallery-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px !important;
+  color: var(--pb-ink);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 3px 10px rgba(7, 26, 77, 0.16);
+  cursor: pointer;
+  transition: background 0.18s ease, opacity 0.18s ease;
+}
+.public-booking-page .pb-gallery-nav.is-prev { left: 8px; }
+.public-booking-page .pb-gallery-nav.is-next { right: 8px; }
+.public-booking-page .pb-gallery-nav:hover { background: #fff; }
+.public-booking-page .pb-gallery-nav:disabled { opacity: 0; pointer-events: none; }
+
+.pb-gallery-count {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(7, 26, 77, 0.6);
+  font-size: 9px !important;
+  font-weight: 800;
+}
+.pb-gallery-tag {
+  position: absolute;
+  top: 9px;
+  left: 9px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--pb-primary);
+  font-size: 9px !important;
+  font-weight: 800;
+}
+
+/* Dots */
+.pb-gallery-dots { display: flex; justify-content: center; gap: 6px; padding: 10px 0 2px; }
+.public-booking-page .pb-gallery-dots button {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px !important;
+  background: #cfd8e3;
+  cursor: pointer;
+  transition: width 0.22s ease, background 0.22s ease;
+}
+.public-booking-page .pb-gallery-dots button.is-active { width: 20px; background: var(--pb-primary); }
+
+/* Info tabs block (inside the media card) */
+.pb-info { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--pb-border); }
 .pb-info-bar { display: flex; align-items: center; gap: 6px; }
 .public-booking-page .pb-info-arrow {
   flex: 0 0 auto;
@@ -768,53 +847,78 @@
 .public-booking-page .pb-info-arrow:hover { color: #fff; background: var(--pb-primary); }
 .public-booking-page .pb-info-arrow:active { transform: scale(0.9); }
 
+/* Horizontal scroller: every label stays fully readable as you keep scrolling */
 .pb-info-strip {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
-  gap: 8px;
+  align-items: center;
   overflow-x: auto;
   scroll-behavior: smooth;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  padding: 2px;
-  scroll-snap-type: x proximity;
+  padding: 0 4px;
+  scroll-padding-inline: 4px;
 }
 .pb-info-strip::-webkit-scrollbar { display: none; }
 
-.public-booking-page .pb-info-chip {
+/* Vertical scroller for the tab content inside the bus card */
+.pb-info-scroll {
+  position: relative;
+  max-height: 190px;
+  margin-top: 12px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.pb-info-scroll::-webkit-scrollbar { width: 5px; }
+.pb-info-scroll::-webkit-scrollbar-thumb { background: #c9d6d1; border-radius: 999px; }
+.pb-info-scroll:focus-visible { outline: 2px solid var(--pb-primary); outline-offset: 2px; border-radius: 12px; }
+
+/* Tabs read as underlined text links, not buttons */
+.public-booking-page .pb-info-link {
   flex: 0 0 auto;
-  scroll-snap-align: center;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 13px;
-  border: 1px solid var(--pb-border);
-  border-radius: 999px !important;
+  position: relative;
+  padding: 8px 2px;
+  border: 0;
+  border-radius: 0 !important;
   color: var(--pb-text);
-  background: #fff;
-  font-size: 11px !important;
+  background: none;
+  font-size: 12px !important;
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
-  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+  text-decoration: underline;
+  text-decoration-color: rgba(7, 26, 77, 0.25);
+  text-underline-offset: 4px;
+  transition: color 0.18s ease, text-decoration-color 0.18s ease;
 }
-.public-booking-page .pb-info-chip svg { color: var(--pb-primary); transition: color 0.18s ease; }
-.public-booking-page .pb-info-chip:hover { border-color: rgba(5, 131, 89, 0.4); }
-.public-booking-page .pb-info-chip.is-active {
-  color: #fff;
-  background: var(--pb-primary);
-  border-color: var(--pb-primary);
+.public-booking-page .pb-info-link + .pb-info-link { margin-left: 18px; }
+.public-booking-page .pb-info-link:hover {
+  color: var(--pb-primary);
+  text-decoration-color: var(--pb-primary);
 }
-.public-booking-page .pb-info-chip.is-active svg { color: #fff; }
+.public-booking-page .pb-info-link.is-active {
+  color: var(--pb-primary);
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--pb-primary);
+}
 
-.pb-info-panel {
-  margin-top: 12px;
-  padding: 14px;
+/* Stacked, scroll-through info sections */
+.pb-info-section {
+  padding: 13px 14px 15px;
   border: 1px solid var(--pb-border);
   border-radius: 14px;
   background: #fff;
-  animation: pb-panel-slide 0.28s ease both;
+}
+.pb-info-section + .pb-info-section { margin-top: 10px; }
+.pb-info-section-title {
+  margin: 0 0 9px;
+  color: var(--pb-ink);
+  font-size: 12px !important;
+  font-weight: 800;
+  letter-spacing: 0.2px;
 }
 .pb-info-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 9px; }
 .pb-info-list li {
@@ -856,7 +960,181 @@
 .pb-info-rating span { color: #f4b860; font-size: 14px !important; letter-spacing: 1px; }
 .pb-info-rating small { color: #8a94a6; font-size: 10px !important; }
 
-/* On wider viewports, show the photo beside the seat map */
 @media (min-width: 760px) {
-  .pb-sheet-panel .pb-bus-photo { max-width: 340px; }
+  .pb-gallery-slide { aspect-ratio: 16 / 7; }
+}
+
+/* Vertical scroller for the seat map */
+.pb-seat-scroll {
+  max-height: 320px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 2px;
+  scrollbar-width: thin;
+}
+.pb-seat-scroll::-webkit-scrollbar { width: 5px; }
+.pb-seat-scroll::-webkit-scrollbar-thumb { background: #c9d6d1; border-radius: 999px; }
+.pb-seat-scroll:focus-visible { outline: 2px solid var(--pb-primary); outline-offset: 2px; border-radius: 18px; }
+
+/* Bus photo card sits after the seats and scrolls vertically as a whole */
+.pb-media-card {
+  margin-top: 18px;
+  margin-bottom: 0;
+  max-height: 330px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.pb-media-card::-webkit-scrollbar { width: 5px; }
+.pb-media-card::-webkit-scrollbar-thumb { background: #c9d6d1; border-radius: 999px; }
+
+@media (min-width: 760px) {
+  .pb-seat-scroll { max-height: 420px; }
+  .pb-media-card { max-height: 420px; }
+}
+
+/* ---------------------------------------------------------------------------
+   Seats + bus card layout: stacked on mobile, side by side on large screens
+--------------------------------------------------------------------------- */
+.pb-seats-layout { display: grid; grid-template-columns: 1fr; gap: 0; }
+.pb-seats-col, .pb-media-col { min-width: 0; }
+
+@media (min-width: 900px) {
+  .pb-seats-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+  .pb-media-card { margin-top: 0; }
+  /* Both columns share a comfortable height on wide screens */
+  .pb-seat-scroll { max-height: 440px; }
+  .pb-media-card { max-height: 480px; }
+  .pb-info-scroll { max-height: 210px; }
+}
+
+@media (min-width: 1180px) {
+  .pb-seats-layout { grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); gap: 24px; }
+}
+
+/* Photo is clickable to open full size */
+.public-booking-page .pb-gallery-open {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0 !important;
+  background: none;
+  cursor: zoom-in;
+}
+.public-booking-page .pb-gallery-open svg { display: block; width: 100%; height: 100%; }
+.public-booking-page .pb-gallery-open:focus-visible { outline: 3px solid var(--pb-primary); outline-offset: -3px; }
+
+/* ---------------------------------------------------------------------------
+   Lightbox: view the photo as it is
+--------------------------------------------------------------------------- */
+.pb-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pb-sheet-fade 0.2s ease both;
+}
+.pb-lightbox-backdrop { position: absolute; inset: 0; background: rgba(4, 12, 32, 0.92); }
+
+.pb-lightbox-track {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.pb-lightbox-track::-webkit-scrollbar { display: none; }
+.pb-lightbox-slide {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 12px 76px;
+}
+/* meet + auto sizing keeps the artwork uncropped, exactly as it is */
+.pb-lightbox-slide svg {
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+  border-radius: 10px;
+  background: #eef6f2;
+}
+
+.public-booking-page .pb-lightbox-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px !important;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+.public-booking-page .pb-lightbox-close:hover { background: rgba(255, 255, 255, 0.3); }
+.public-booking-page .pb-lightbox-close:active { transform: scale(0.92); }
+
+.public-booking-page .pb-lightbox-nav {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px !important;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  cursor: pointer;
+  transition: background 0.18s ease, opacity 0.18s ease;
+}
+.public-booking-page .pb-lightbox-nav.is-prev { left: 10px; }
+.public-booking-page .pb-lightbox-nav.is-next { right: 10px; }
+.public-booking-page .pb-lightbox-nav:hover { background: rgba(255, 255, 255, 0.3); }
+.public-booking-page .pb-lightbox-nav:disabled { opacity: 0; pointer-events: none; }
+
+.pb-lightbox-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 22px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: #fff;
+  text-align: center;
+}
+.pb-lightbox-caption strong { font-size: 13px !important; font-weight: 800; }
+.pb-lightbox-caption span { color: rgba(255, 255, 255, 0.7); font-size: 11px !important; }
+
+@media (min-width: 900px) {
+  .pb-lightbox-slide { padding: 70px 80px 90px; }
+  .pb-lightbox-slide svg { max-width: 900px; }
 }
