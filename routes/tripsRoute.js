@@ -27,6 +27,42 @@ const getCompanyPaymentMethods = async (companyId) => {
   return company?.enabledPaymentMethods?.length ? company.enabledPaymentMethods : ["EcoCash", "Card Payment"];
 };
 
+/**
+ * Confirm a trip's company is payment-ready for WhatsApp BEFORE the trip saves,
+ * so admins find out at creation time instead of discovering (as we did) that
+ * WhatsApp silently hides the bus. WhatsApp requires ALL of:
+ *   - a company on the trip/route,
+ *   - a Pesepay integration key AND encryption key on that company,
+ *   - at least one enabled payment method.
+ * Returns an error message string if not ready, or "" when everything is set.
+ */
+const getCompanyPaymentReadinessError = async (companyId) => {
+  if (!companyId) {
+    return "Assign this trip to a company before saving (required for WhatsApp booking).";
+  }
+  const company = await Company.findById(companyId, {
+    companyName: 1,
+    pesepayIntegrationKey: 1,
+    pesepayEncryptionKey: 1,
+    enabledPaymentMethods: 1,
+  }).lean();
+  if (!company) {
+    return "Trip company could not be found.";
+  }
+  const label = normalizeString(company.companyName) || "This company";
+  const hasIntegrationKey = Boolean(normalizeString(company.pesepayIntegrationKey));
+  const hasEncryptionKey = Boolean(normalizeString(company.pesepayEncryptionKey));
+  const hasEnabledMethods = Array.isArray(company.enabledPaymentMethods) && company.enabledPaymentMethods.length > 0;
+
+  if (!hasIntegrationKey || !hasEncryptionKey) {
+    return `${label} has no Pesepay keys. Add the Pesepay integration and encryption keys in Admin → Pesepay Settings before saving this trip, otherwise it will not appear on WhatsApp.`;
+  }
+  if (!hasEnabledMethods) {
+    return `${label} has no enabled payment methods. Enable at least one payment method in Admin → Pesepay Settings before saving this trip, otherwise it will not appear on WhatsApp.`;
+  }
+  return "";
+};
+
 const parseClockTimeToMinutes = (value) => {
   const [hours, minutes] = normalizeString(value)
     .split(":")
@@ -242,6 +278,13 @@ router.post("/save-trip", authMiddleware, async (req, res) => {
 
     const payload = await buildTripPayload(req.body, route);
     payload.companyId = route.companyId || assignedBus?.companyId || null;
+
+    // Make sure the trip's company is payment-ready for WhatsApp before saving.
+    const paymentReadinessError = await getCompanyPaymentReadinessError(payload.companyId);
+    if (paymentReadinessError) {
+      return res.status(200).send({ success: false, message: paymentReadinessError });
+    }
+
     const duplicateTripCode = await Trip.findOne({
       tripCode: payload.tripCode,
       companyId: payload.companyId || null,
