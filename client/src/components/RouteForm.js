@@ -30,6 +30,7 @@ const emptyStop = (index) => ({
   clientId: makeStopId(),
   cityName: "",
   travelScope: "Local",
+  country: "",
   boardingPoints: [],
   arrivalTime: "",
   departureTime: "",
@@ -311,6 +312,21 @@ function StopRow({ stop, index, totalStops, errors, onChange, onRemove }) {
         </select>
       </td>
       <td>
+        <select
+          value={stop.country || ""}
+          onChange={(event) => onChange(index, "country", event.target.value)}
+          aria-label={`${stop.cityName || `Stop ${index + 1}`} country`}
+        >
+          <option value="">Not set</option>
+          <option value="ZW">Zimbabwe</option>
+          <option value="ZA">South Africa</option>
+          <option value="BW">Botswana</option>
+          <option value="MZ">Mozambique</option>
+          <option value="ZM">Zambia</option>
+          <option value="MW">Malawi</option>
+        </select>
+      </td>
+      <td>
         <button
           type="button"
           className="route-stop-delete-button"
@@ -347,6 +363,7 @@ function RouteStopsTable({ stops, errors, setStopValue, addStop, removeStop }) {
               <th>Stop Minutes</th>
               <th>Boarding Points</th>
               <th>City Type</th>
+              <th>Country</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -818,6 +835,7 @@ function RouteForm({
       clientId: String(stop._id || `stop-${index}`),
       cityName: stop.cityName || "",
       travelScope: stop.travelScope || "Local",
+      country: stop.country || "",
       boardingPoints:
         stop.boardingPoints?.length
           ? stop.boardingPoints
@@ -999,6 +1017,7 @@ function RouteForm({
       ...stop,
       cityName: stop.cityName.trim(),
       travelScope: stop.travelScope === "International" ? "International" : "Local",
+      country: String(stop.country || "").trim().toUpperCase(),
       arrivalTime: "",
       departureTime: "",
       boardingPoints: (stop.boardingPoints || []).map((point) => point.trim()).filter(Boolean),

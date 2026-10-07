@@ -119,6 +119,11 @@ const buildFareAnchors = () => {
   return anchors;
 };
 
+// Country per stop: everything up to and including the South African border
+// post is "ZA"; Beitbridge (Zimbabwe side) onwards is "ZW".
+const BORDER_INDEX = TABLE.findIndex((row) => /border/i.test(row.city));
+const countryForIndex = (index) => (BORDER_INDEX >= 0 && index <= BORDER_INDEX ? "ZA" : "ZW");
+
 const buildStops = () =>
   TABLE.map((row, index) => {
     const isFirst = index === 0;
@@ -132,6 +137,7 @@ const buildStops = () =>
       boardingPoint: row.boarding,
       boardingPoints: [row.boarding],
       travelScope: row.scope === "International" ? "International" : "Local",
+      country: countryForIndex(index),
       distanceFromPrevious: isFirst ? "" : "0 km", // placeholder, edit in web
       durationFromPrevious,
       stopMinutes: isFirst || isLast ? "0" : String(row.waitMin),
@@ -239,6 +245,7 @@ const main = async () => {
       boardingPoint: stop.boardingPoints[0] || stop.boardingPoint,
       boardingPoints: stop.boardingPoints,
       travelScope: stop.travelScope,
+      country: stop.country,
       distanceFromPrevious: stop.distanceFromPrevious,
       durationFromPrevious: stop.durationFromPrevious,
       stopMinutes: stop.stopMinutes,

@@ -36,6 +36,12 @@ const routeStopSchema = new mongoose.Schema(
       enum: ["Local", "International"],
       default: "Local",
     },
+    // Optional ISO country code (e.g. "ZW", "ZA", "BW"). Used by WhatsApp to
+    // group destinations into travel corridors. Blank = unknown (inferred).
+    country: {
+      type: String,
+      default: "",
+    },
     distanceFromPrevious: {
       type: String,
       default: "",
