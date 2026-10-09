@@ -6,6 +6,14 @@ import { HideLoading, ShowLoading } from "../redux/alertsSlice";
 
 const makeStopId = () => `stop-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const WEEK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const COUNTRY_OPTIONS = [
+  { value: "ZW", label: "Zimbabwe" },
+  { value: "ZA", label: "South Africa" },
+  { value: "BW", label: "Botswana" },
+  { value: "MZ", label: "Mozambique" },
+  { value: "ZM", label: "Zambia" },
+  { value: "MW", label: "Malawi" },
+];
 
 const emptyOutboundSchedule = () => ({
   enabled: true,
@@ -42,6 +50,8 @@ const emptyStop = (index) => ({
 });
 
 const stopKey = (stop) => stop._id || stop.clientId;
+const getStopTravelScope = (stopCountry, originCountry) =>
+  stopCountry && originCountry && stopCountry !== originCountry ? "International" : "Local";
 
 const parseDistance = (value) => {
   const parsed = Number(String(value || "").replace(/[^\d.]/g, ""));
@@ -303,28 +313,18 @@ function StopRow({ stop, index, totalStops, errors, onChange, onRemove }) {
       </td>
       <td>
         <select
-          value={stop.travelScope || "Local"}
-          onChange={(event) => onChange(index, "travelScope", event.target.value)}
-          aria-label={`${stop.cityName || `Stop ${index + 1}`} route type`}
-        >
-          <option value="Local">Local</option>
-          <option value="International">International</option>
-        </select>
-      </td>
-      <td>
-        <select
           value={stop.country || ""}
           onChange={(event) => onChange(index, "country", event.target.value)}
           aria-label={`${stop.cityName || `Stop ${index + 1}`} country`}
         >
-          <option value="">Not set</option>
-          <option value="ZW">Zimbabwe</option>
-          <option value="ZA">South Africa</option>
-          <option value="BW">Botswana</option>
-          <option value="MZ">Mozambique</option>
-          <option value="ZM">Zambia</option>
-          <option value="MW">Malawi</option>
+          <option value="">Select country</option>
+          {COUNTRY_OPTIONS.map((country) => (
+            <option value={country.value} key={country.value}>{country.label}</option>
+          ))}
         </select>
+        {errors[`stop-${index}-country`] && (
+          <p className="route-error">{errors[`stop-${index}-country`]}</p>
+        )}
       </td>
       <td>
         <button
@@ -362,7 +362,6 @@ function RouteStopsTable({ stops, errors, setStopValue, addStop, removeStop }) {
               <th>Minutes Between Stops</th>
               <th>Stop Minutes</th>
               <th>Boarding Points</th>
-              <th>City Type</th>
               <th>Country</th>
               <th>Actions</th>
             </tr>
@@ -1013,11 +1012,13 @@ function RouteForm({
   const validateRoute = () => {
     const nextErrors = {};
     const warnings = [];
+    const normalizedCountries = orderedStops.map((stop) => String(stop.country || "").trim().toUpperCase());
+    const originCountry = normalizedCountries[0] || "";
     const cleanStops = orderedStops.map((stop, index) => ({
       ...stop,
       cityName: stop.cityName.trim(),
-      travelScope: stop.travelScope === "International" ? "International" : "Local",
-      country: String(stop.country || "").trim().toUpperCase(),
+      travelScope: getStopTravelScope(normalizedCountries[index], originCountry),
+      country: normalizedCountries[index],
       arrivalTime: "",
       departureTime: "",
       boardingPoints: (stop.boardingPoints || []).map((point) => point.trim()).filter(Boolean),
@@ -1035,6 +1036,10 @@ function RouteForm({
     cleanStops.forEach((stop, index) => {
       if (!stop.cityName) {
         nextErrors[`stop-${index}-cityName`] = "City is required";
+      }
+
+      if (!stop.country) {
+        nextErrors[`stop-${index}-country`] = "Select the country for this city.";
       }
 
       if (!stop.boardingPoints.length) {

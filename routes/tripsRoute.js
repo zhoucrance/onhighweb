@@ -96,6 +96,7 @@ const normalizeStopSchedule = (items = []) =>
           stopId: mongoose.Types.ObjectId.isValid(item.stopId) ? item.stopId : null,
           cityName: normalizeString(item.cityName),
           travelScope: normalizeTravelScope(item.travelScope),
+          country: normalizeString(item.country).toUpperCase().slice(0, 2),
           stopOrder: Number(item.stopOrder || index + 1),
           arrivalTime: normalizeString(item.arrivalTime),
           arrivalDayOffset: Number(item.arrivalDayOffset || 0),

@@ -528,11 +528,22 @@ router.post("/save-route", authMiddleware, async (req, res) => {
 
     const firstStop = orderedStops[0];
     const lastStop = orderedStops[orderedStops.length - 1];
+    const originCountry = firstStop.country;
     firstStop.stopMinutes = "0";
     lastStop.stopMinutes = "0";
+    orderedStops.forEach((stop) => {
+      stop.travelScope = stop.country && originCountry && stop.country !== originCountry ? "International" : "Local";
+    });
 
     for (let index = 0; index < orderedStops.length; index += 1) {
       const stop = orderedStops[index];
+      if (!stop.country) {
+        return res.status(200).send({
+          success: false,
+          message: "Select the country for each city.",
+        });
+      }
+
       if (!stop.boardingPoints.length) {
         return res.status(200).send({
           success: false,

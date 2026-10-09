@@ -73,6 +73,15 @@ const tripSchema = new mongoose.Schema(
             type: String,
             default: "",
           },
+          travelScope: {
+            type: String,
+            enum: ["Local", "International"],
+            default: "Local",
+          },
+          country: {
+            type: String,
+            default: "",
+          },
           stopOrder: {
             type: Number,
             default: 0,

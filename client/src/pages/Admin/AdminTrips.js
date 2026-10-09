@@ -70,6 +70,17 @@ const formatClockFromBase = (baseMinutes, addedMinutes) => {
 const sortStops = (stops = []) =>
   [...stops].sort((first, second) => Number(first.stopOrder || 0) - Number(second.stopOrder || 0));
 
+const COUNTRY_LABELS = {
+  ZW: "Zimbabwe",
+  ZA: "South Africa",
+  BW: "Botswana",
+  MZ: "Mozambique",
+  ZM: "Zambia",
+  MW: "Malawi",
+};
+
+const countryLabel = (country) => COUNTRY_LABELS[String(country || "").toUpperCase()] || String(country || "").trim();
+
 const buildStopScheduleFromRoute = (route, existingSchedule = [], departureTime = "") => {
   const orderedStops = sortStops(route?.stops || []);
   const baseDepartureMinutes = parseClockTimeToMinutes(departureTime);
@@ -108,6 +119,7 @@ const buildStopScheduleFromRoute = (route, existingSchedule = [], departureTime 
       stopId: stop._id,
       cityName: stop.cityName || "",
       travelScope: stop.travelScope || "Local",
+      country: stop.country || savedItem.country || "",
       stopOrder: Number(stop.stopOrder || index + 1),
       arrivalTime: arrivalClock.time,
       arrivalDisplay: arrivalClock.display,
@@ -584,6 +596,7 @@ function AdminTrips() {
                       )}
                       {fields.map((field, index) => {
                         const cityName = form.getFieldValue(["stopSchedule", field.name, "cityName"]) || "City";
+                        const country = countryLabel(form.getFieldValue(["stopSchedule", field.name, "country"]));
                         const minutes = form.getFieldValue(["stopSchedule", field.name, "durationFromPrevious"]);
                         const stopMinutes = form.getFieldValue(["stopSchedule", field.name, "stopMinutes"]);
                         const arrivalDisplay = form.getFieldValue(["stopSchedule", field.name, "arrivalDisplay"]);
@@ -593,7 +606,7 @@ function AdminTrips() {
                             <td>{index + 1}</td>
                             <td>
                               <strong>{cityName}</strong>
-                              <span>{index === 0 ? "Start" : index === fields.length - 1 ? "Destination" : "Stop"}</span>
+                              <span>{country || (index === 0 ? "Start" : index === fields.length - 1 ? "Destination" : "Stop")}</span>
                             </td>
                             <td>{index === 0 ? "-" : `${minutes || 0} min (${formatDuration(Number(minutes || 0))})`}</td>
                             <td>{index === 0 || index === fields.length - 1 ? "-" : `${stopMinutes || 0} min`}</td>
