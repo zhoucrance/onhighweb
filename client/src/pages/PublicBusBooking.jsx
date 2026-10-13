@@ -1,28 +1,26 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import PbSearchableSelect from "../components/PbSearchableSelect";
 import PbDatePicker from "../components/PbDatePicker";
 import PbBookingSheet from "../components/PbBookingSheet";
 import "../resourses/public-booking.css";
 
-const cities = [
-  "Harare",
-  "Bulawayo",
-  "Gweru",
-  "Masvingo",
-  "Mutare",
-  "Victoria Falls",
+const corridorStops = [
+  { name: "Harare", farePoint: 0, minutePoint: 0 },
+  { name: "Marondera", farePoint: 3, minutePoint: 75 },
+  { name: "Rusape", farePoint: 5, minutePoint: 170 },
+  { name: "Mutare", farePoint: 10, minutePoint: 240 },
 ];
+
+const cities = corridorStops.map((stop) => stop.name);
 
 const buses = [
   {
     id: "ohb-101",
-    operator: "OnHigh Executive",
-    coach: "Luxury coach · 2 + 2 seating",
-    departure: "07:30",
-    arrival: "13:15",
-    duration: "5h 45m",
-    price: 28,
+    operator: "Tenda Executive",
+    coach: "Check Yo Time coach - 2 + 2 seating",
+    departure: "06:00",
+    fareAdjustment: 0,
     seatsLeft: 12,
     boarding: "Roadport Terminal",
     amenities: ["Wi-Fi", "USB charging", "Air conditioning"],
@@ -30,12 +28,10 @@ const buses = [
   },
   {
     id: "ohb-205",
-    operator: "OnHigh Express",
-    coach: "Comfort coach · 2 + 2 seating",
-    departure: "10:00",
-    arrival: "16:20",
-    duration: "6h 20m",
-    price: 24,
+    operator: "Tenda Express",
+    coach: "Comfort coach - 2 + 2 seating",
+    departure: "09:30",
+    fareAdjustment: 0,
     seatsLeft: 18,
     boarding: "Mbare Musika",
     amenities: ["USB charging", "Air conditioning"],
@@ -43,12 +39,10 @@ const buses = [
   },
   {
     id: "ohb-310",
-    operator: "OnHigh Nightliner",
-    coach: "Executive coach · Extra legroom",
-    departure: "18:30",
-    arrival: "00:10",
-    duration: "5h 40m",
-    price: 30,
+    operator: "Tenda Nightliner",
+    coach: "Executive coach - extra legroom",
+    departure: "17:45",
+    fareAdjustment: 1,
     seatsLeft: 9,
     boarding: "Roadport Terminal",
     amenities: ["Wi-Fi", "Reclining seats", "USB charging"],
@@ -57,9 +51,9 @@ const buses = [
 ];
 
 const popularRoutes = [
-  { from: "Harare", to: "Bulawayo", time: "From 5h 40m" },
-  { from: "Harare", to: "Mutare", time: "From 3h 30m" },
-  { from: "Bulawayo", to: "Victoria Falls", time: "From 4h 45m" },
+  { from: "Harare", to: "Mutare", time: "US$10 - about 4h" },
+  { from: "Harare", to: "Rusape", time: "US$5 - about 2h 50m" },
+  { from: "Mutare", to: "Marondera", time: "US$7 - about 2h 45m" },
 ];
 
 const Icon = ({ name, size = 20 }) => {
@@ -84,32 +78,32 @@ const Icon = ({ name, size = 20 }) => {
 };
 
 const BusIllustration = () => (
-  <svg className="pb-hero-art" viewBox="0 0 560 300" role="img" aria-label="OnHigh coach travelling through green hills">
+  <svg className="pb-hero-art" viewBox="0 0 560 300" role="img" aria-label="Animated demo coach travelling from Harare to Mutare">
     <defs>
       <linearGradient id="pbSky" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#d9f5e9" />
-        <stop offset="1" stopColor="#f7fbf9" />
+        <stop offset="0" stopColor="#dff6ff" />
+        <stop offset="1" stopColor="#f8fbfd" />
       </linearGradient>
       <linearGradient id="pbBus" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stopColor="#058359" />
-        <stop offset="1" stopColor="#035e42" />
+        <stop offset="0" stopColor="#ffffff" />
+        <stop offset="1" stopColor="#e5eef5" />
       </linearGradient>
     </defs>
     <rect width="560" height="300" rx="32" fill="url(#pbSky)" />
-    <circle cx="450" cy="55" r="28" fill="#f4b860" opacity=".82" />
-    <path d="M0 174C80 116 159 136 221 165c72 34 119 20 170-8 55-31 104-23 169 18v125H0Z" fill="#bce3cf" />
-    <path d="M0 210c85-40 152-25 215 10 65 37 136 36 210-2 50-25 90-19 135 5v77H0Z" fill="#73b894" />
+    <circle cx="450" cy="55" r="28" fill="#f0b429" opacity=".82" />
+    <path d="M0 174C80 116 159 136 221 165c72 34 119 20 170-8 55-31 104-23 169 18v125H0Z" fill="#b9e6f7" />
+    <path d="M0 210c85-40 152-25 215 10 65 37 136 36 210-2 50-25 90-19 135 5v77H0Z" fill="#72c4e5" />
     <path d="M117 300c76-93 173-104 307-42" fill="none" stroke="#f8f4e8" strokeWidth="42" />
-    <path d="M117 300c76-93 173-104 307-42" fill="none" stroke="#071a4d" strokeWidth="3" strokeDasharray="15 12" opacity=".5" />
+    <path d="M117 300c76-93 173-104 307-42" fill="none" stroke="#071b3d" strokeWidth="3" strokeDasharray="15 12" opacity=".5" />
     <g className="pb-bus-moving">
-      <ellipse cx="342" cy="238" rx="100" ry="12" fill="#071a4d" opacity=".16" />
-      <path d="M250 159h157c17 0 33 12 37 28l10 43H238v-55c0-9 5-16 12-16Z" fill="url(#pbBus)" />
-      <path d="M269 170h126c14 0 25 8 29 20l4 13H269Z" fill="#d9f5e9" />
-      <path d="M281 174v27m37-27v27m39-27v27m39-24v24" stroke="#071a4d" strokeWidth="3" opacity=".35" />
-      <path d="M238 213h216v17H238Z" fill="#AC4425" />
-      <circle cx="283" cy="231" r="17" fill="#071a4d" /><circle cx="283" cy="231" r="7" fill="#dde4ef" />
-      <circle cx="414" cy="231" r="17" fill="#071a4d" /><circle cx="414" cy="231" r="7" fill="#dde4ef" />
-      <text x="285" y="219" fill="white" fontSize="12" fontWeight="700">ONHIGH BUS</text>
+      <ellipse cx="342" cy="238" rx="100" ry="12" fill="#071b3d" opacity=".16" />
+      <path d="M250 159h157c17 0 33 12 37 28l10 43H238v-55c0-9 5-16 12-16Z" fill="url(#pbBus)" stroke="#cddce8" strokeWidth="2" />
+      <path d="M269 170h126c14 0 25 8 29 20l4 13H269Z" fill="#071b3d" />
+      <path d="M281 174v27m37-27v27m39-27v27m39-24v24" stroke="#128fca" strokeWidth="3" opacity=".45" />
+      <path d="M238 213h216v17H238Z" fill="#f0b429" />
+      <circle cx="283" cy="231" r="17" fill="#071b3d" /><circle cx="283" cy="231" r="7" fill="#dde4ef" />
+      <circle cx="414" cy="231" r="17" fill="#071b3d" /><circle cx="414" cy="231" r="7" fill="#dde4ef" />
+      <text x="285" y="219" fill="#128fca" fontSize="12" fontWeight="700">TENDA DEMO</text>
     </g>
   </svg>
 );
@@ -121,6 +115,27 @@ const toLocalDateInputValue = (date) => {
   return `${year}-${month}-${day}`;
 };
 
+const getStop = (city) => corridorStops.find((stop) => stop.name === city);
+
+const addMinutes = (time, minutes) => {
+  const [hours, mins] = String(time).split(":").map(Number);
+  const total = (hours * 60 + mins + minutes + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+};
+
+const getRouteMinutes = (fromCity, toCity) =>
+  Math.abs((getStop(toCity)?.minutePoint || 0) - (getStop(fromCity)?.minutePoint || 0));
+
+const getRouteFare = (fromCity, toCity) =>
+  Math.abs((getStop(toCity)?.farePoint || 0) - (getStop(fromCity)?.farePoint || 0));
+
+const formatTripDuration = (fromCity, toCity) => {
+  const minutes = getRouteMinutes(fromCity, toCity);
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours ? `${hours}h` : ""}${hours && mins ? " " : ""}${mins ? `${mins}m` : ""}`;
+};
+
 const todayDate = new Date();
 const nextWeekDate = new Date(todayDate);
 nextWeekDate.setDate(nextWeekDate.getDate() + 7);
@@ -129,7 +144,7 @@ const nextWeek = toLocalDateInputValue(nextWeekDate);
 
 function PublicBusBooking() {
   const [from, setFrom] = useState("Harare");
-  const [to, setTo] = useState("Bulawayo");
+  const [to, setTo] = useState("Mutare");
   const [journeyDate, setJourneyDate] = useState(nextWeek);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -137,6 +152,24 @@ function PublicBusBooking() {
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [message, setMessage] = useState("");
   const resultsRef = useRef(null);
+
+  const destinationOptions = useMemo(() => cities.filter((city) => city !== from), [from]);
+
+  useEffect(() => {
+    if (from !== to) return;
+    setTo(cities.find((city) => city !== from) || "");
+  }, [from, to]);
+
+  const preparedBuses = useMemo(() => {
+    const routeMinutes = getRouteMinutes(from, to);
+    const routeFare = getRouteFare(from, to);
+    return buses.map((bus) => ({
+      ...bus,
+      arrival: addMinutes(bus.departure, routeMinutes),
+      duration: formatTripDuration(from, to),
+      price: Math.max(1, routeFare + bus.fareAdjustment),
+    }));
+  }, [from, to]);
 
   const readableDate = useMemo(() => {
     if (!journeyDate) return "Choose a travel date";
@@ -162,7 +195,7 @@ function PublicBusBooking() {
       return;
     }
     if (from === to) {
-      setMessage("Choose two different cities to search for a trip.");
+      setMessage("Choose two different stops to search for a trip.");
       return;
     }
 
@@ -185,8 +218,8 @@ function PublicBusBooking() {
   const closeSheet = () => setActiveBus(null);
 
   const activeBusDetails = useMemo(
-    () => buses.find((bus) => bus.id === activeBus) || null,
-    [activeBus]
+    () => preparedBuses.find((bus) => bus.id === activeBus) || null,
+    [activeBus, preparedBuses]
   );
 
   const toggleSeat = (seat) => {
@@ -199,9 +232,9 @@ function PublicBusBooking() {
   const confirmBooking = (details) => {
     setActiveBus(null);
     setMessage(
-      `Booking held for ${details.contact.name || "your trip"} · seat${
+      `Booking held for ${details.contact.name || "your trip"} - seat${
         details.seats.length > 1 ? "s" : ""
-      } ${details.seats.join(", ")} · pickup at ${details.pickupPoint?.name} · US$${details.total}. Payment will be connected in the next phase.`
+      } ${details.seats.join(", ")} - pickup at ${details.pickupPoint?.name} - US$${details.total}. Payment will be connected in the next phase.`
     );
   };
 
@@ -215,9 +248,9 @@ function PublicBusBooking() {
     <main className="public-booking-page">
       <header className="pb-header">
         <div className="pb-shell pb-header-inner">
-          <a className="pb-brand" href="#top" aria-label="OnHigh Bus home">
+          <a className="pb-brand" href="#top" aria-label="Tenda Bus home">
             <span className="pb-brand-mark"><Icon name="bus" size={24} /></span>
-            <span><strong>OnHigh</strong><small>BUS</small></span>
+            <span><strong>Tenda</strong><small>BUS</small></span>
           </a>
           <nav className="pb-nav" aria-label="Public booking navigation">
             <a href="#how-it-works">How it works</a>
@@ -230,12 +263,12 @@ function PublicBusBooking() {
       <section className="pb-hero" id="top">
         <div className="pb-shell pb-hero-grid">
           <div className="pb-hero-copy">
-            <span className="pb-eyebrow"><span /> Simple journeys start here</span>
-            <h1>Where will the road take you next?</h1>
-            <p>Search, compare and reserve your bus seat in a few easy steps.</p>
+            <span className="pb-eyebrow"><span /> Book a seat</span>
+            <h1>Tenda</h1>
+            <p>Harare - Mutare daily trips.</p>
             <div className="pb-trust-row">
-              <span><Icon name="shield" size={18} /> Secure booking</span>
-              <span><Icon name="ticket" size={18} /> Instant ticket</span>
+              <span><Icon name="shield" size={18} /> Safe</span>
+              <span><Icon name="ticket" size={18} /> Ticket</span>
             </div>
           </div>
           <BusIllustration />
@@ -251,8 +284,8 @@ function PublicBusBooking() {
                 value={from}
                 options={cities}
                 onChange={setFrom}
-                placeholder="Departure city"
-                searchPlaceholder="Search departure city…"
+                placeholder="Departure stop"
+                searchPlaceholder="Search departure stop..."
               />
             </span>
           </div>
@@ -264,11 +297,11 @@ function PublicBusBooking() {
               <PbSearchableSelect
                 id="pb-to"
                 value={to}
-                options={cities}
+                options={destinationOptions}
                 onChange={setTo}
                 align="end"
-                placeholder="Destination city"
-                searchPlaceholder="Search destination…"
+                placeholder="Destination stop"
+                searchPlaceholder="Search destination..."
               />
             </span>
           </div>
@@ -296,12 +329,12 @@ function PublicBusBooking() {
         <section className="pb-results-section" ref={resultsRef} aria-live="polite">
           <div className="pb-shell">
             <div className="pb-results-heading">
-              <div><span className="pb-section-label">Available trips</span><h2>{from} <span>→</span> {to}</h2><p>{readableDate} · {buses.length} buses found</p></div>
+              <div><span className="pb-section-label">Available trips</span><h2>{from} <span>to</span> {to}</h2><p>{readableDate} - {preparedBuses.length} Tenda buses found</p></div>
               <button type="button" onClick={() => document.querySelector(".pb-search-card")?.scrollIntoView({ behavior: "smooth" })}>Modify search</button>
             </div>
 
             <div className="pb-results-list">
-              {buses.map((bus, index) => {
+              {preparedBuses.map((bus, index) => {
                 const isOpen = activeBus === bus.id;
                 return (
                   <article className={`pb-bus-card ${isOpen ? "is-open" : ""}`} key={bus.id} style={{ "--delay": `${index * 90}ms` }}>
@@ -313,7 +346,6 @@ function PublicBusBooking() {
                       <div className="pb-price"><span>From</span><strong>US${bus.price}</strong><small>{bus.seatsLeft} seats left</small></div>
                       <button className="pb-view-seats" type="button" onClick={() => openSeats(bus.id)} aria-haspopup="dialog">View seats</button>
                     </div>
-
                   </article>
                 );
               })}
@@ -326,20 +358,20 @@ function PublicBusBooking() {
       <section className="pb-how" id="how-it-works">
         <div className="pb-shell">
           <span className="pb-section-label">Easy from start to finish</span>
-          <h2>Book your next trip in three steps</h2>
+          <h2>Book in three steps</h2>
           <div className="pb-steps">
-            <article><span>01</span><div className="pb-step-icon"><Icon name="pin" size={24} /></div><h3>Search your route</h3><p>Choose where you are leaving from, your destination and travel date.</p></article>
-            <article><span>02</span><div className="pb-step-icon"><Icon name="bus" size={24} /></div><h3>Pick a bus & seat</h3><p>Compare departure times and choose the seat that suits you.</p></article>
-            <article><span>03</span><div className="pb-step-icon"><Icon name="ticket" size={24} /></div><h3>Get your ticket</h3><p>Complete your details and receive your booking confirmation instantly.</p></article>
+            <article><span>01</span><div className="pb-step-icon"><Icon name="pin" size={24} /></div><h3>Route</h3><p>Choose your stops and date.</p></article>
+            <article><span>02</span><div className="pb-step-icon"><Icon name="bus" size={24} /></div><h3>Seat</h3><p>Pick a bus and seat.</p></article>
+            <article><span>03</span><div className="pb-step-icon"><Icon name="ticket" size={24} /></div><h3>Ticket</h3><p>Add passenger details.</p></article>
           </div>
         </div>
       </section>
 
       <section className="pb-popular" id="popular-routes">
         <div className="pb-shell">
-          <div className="pb-section-heading"><div><span className="pb-section-label">Travel inspiration</span><h2>Popular routes</h2></div><p>Start with one of our most travelled routes.</p></div>
+          <div className="pb-section-heading"><div><span className="pb-section-label">Routes</span><h2>Popular</h2></div><p>Quick picks.</p></div>
           <div className="pb-route-cards">
-            {popularRoutes.map((route) => <button type="button" key={`${route.from}-${route.to}`} onClick={() => choosePopularRoute(route)}><span className="pb-route-icon"><Icon name="bus" size={22} /></span><span><strong>{route.from} <b>→</b> {route.to}</strong><small>{route.time}</small></span><Icon name="arrow" size={18} /></button>)}
+            {popularRoutes.map((route) => <button type="button" key={`${route.from}-${route.to}`} onClick={() => choosePopularRoute(route)}><span className="pb-route-icon"><Icon name="bus" size={22} /></span><span><strong>{route.from} <b>to</b> {route.to}</strong><small>{route.time}</small></span><Icon name="arrow" size={18} /></button>)}
           </div>
         </div>
       </section>
@@ -357,7 +389,7 @@ function PublicBusBooking() {
       />
 
       <footer className="pb-footer">
-        <div className="pb-shell pb-footer-inner"><div className="pb-brand pb-brand--footer"><span className="pb-brand-mark"><Icon name="bus" size={24} /></span><span><strong>OnHigh</strong><small>BUS</small></span></div><p>Making every journey feel simple.</p><span>© {new Date().getFullYear()} OnHigh Bus</span></div>
+        <div className="pb-shell pb-footer-inner"><div className="pb-brand pb-brand--footer"><span className="pb-brand-mark"><Icon name="bus" size={24} /></span><span><strong>Tenda</strong><small>BUS</small></span></div><p>Harare - Mutare.</p><span>{new Date().getFullYear()} Tenda Bus</span></div>
       </footer>
     </main>
   );

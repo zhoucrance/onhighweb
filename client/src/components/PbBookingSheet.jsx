@@ -94,17 +94,39 @@ const addMinutes = (time, minutes) => {
   ).padStart(2, "0")}`;
 };
 
-const BOARDING_POINTS = [
-  { id: "bp-terminal", name: "Roadport Terminal", detail: "Robert Mugabe Road", offset: 0 },
-  { id: "bp-musika", name: "Mbare Musika", detail: "Ardbennie Road", offset: 15 },
-  { id: "bp-westgate", name: "Westgate Shops", detail: "Bulawayo Road", offset: 32 },
-];
+const STOP_POINT_DETAILS = {
+  Harare: [
+    { name: "Roadport Terminal", detail: "Robert Mugabe Road" },
+    { name: "Mbare Musika", detail: "Ardbennie Road" },
+    { name: "Eastlea Pickup", detail: "Mutare Road" },
+  ],
+  Marondera: [
+    { name: "Marondera Rank", detail: "Town centre" },
+    { name: "TM Pick n Pay", detail: "Main Street" },
+    { name: "Mutare Road Stop", detail: "A3 highway" },
+  ],
+  Rusape: [
+    { name: "Rusape Rank", detail: "Town centre" },
+    { name: "Vengere Turn-off", detail: "A3 highway" },
+    { name: "Croco Motors Stop", detail: "Mutare Road" },
+  ],
+  Mutare: [
+    { name: "Sakubva Rank", detail: "Mutare bus terminus" },
+    { name: "Mutare CBD", detail: "Herbert Chitepo Street" },
+    { name: "Christmas Pass Stop", detail: "A3 highway" },
+  ],
+};
 
-const DROPPING_POINTS = [
-  { id: "dp-renkini", name: "Renkini Terminal", detail: "6th Avenue Extension", offset: 0 },
-  { id: "dp-cityhall", name: "City Hall", detail: "Fife Street", offset: -18 },
-  { id: "dp-ascot", name: "Ascot Shops", detail: "Gwanda Road", offset: -32 },
-];
+const getPointOptions = (city, prefix, reverse = false) => {
+  const stops = STOP_POINT_DETAILS[city] || [
+    { name: `${city} main stop`, detail: "Central pickup point" },
+  ];
+  return stops.map((point, index) => ({
+    id: `${prefix}-${city.toLowerCase().replace(/\s+/g, "-")}-${index}`,
+    ...point,
+    offset: reverse ? index * -12 : index * 12,
+  }));
+};
 
 // Swipeable bus gallery (placeholder artwork for the UI preview).
 const BUS_PHOTOS = [
@@ -120,24 +142,24 @@ const PhotoArt = ({ variant, full = false }) => {
   const scenes = {
     exterior: (
       <>
-        <rect width="320" height="150" fill="#e4f4ec" />
-        <path d="M0 104c60-26 120-14 176 6 46 16 96 12 144-8v48H0Z" fill="#a9dcc4" />
-        <rect x="34" y="52" width="252" height="60" rx="14" fill="#058359" />
-        <rect x="46" y="62" width="208" height="25" rx="8" fill="#d9f5e9" />
-        <rect x="34" y="95" width="252" height="11" fill="#AC4425" />
-        <circle cx="88" cy="115" r="14" fill="#071a4d" /><circle cx="88" cy="115" r="6" fill="#dde4ef" />
-        <circle cx="232" cy="115" r="14" fill="#071a4d" /><circle cx="232" cy="115" r="6" fill="#dde4ef" />
-        <text x="54" y="79" fill="#071a4d" fontSize="11" fontWeight="700">ONHIGH BUS</text>
+        <rect width="320" height="150" fill="#eaf7fc" />
+        <path d="M0 104c60-26 120-14 176 6 46 16 96 12 144-8v48H0Z" fill="#b9e6f7" />
+        <rect x="34" y="52" width="252" height="60" rx="14" fill="#128fca" />
+        <rect x="46" y="62" width="208" height="25" rx="8" fill="#e6f7fd" />
+        <rect x="34" y="95" width="252" height="11" fill="#f0b429" />
+        <circle cx="88" cy="115" r="14" fill="#071b3d" /><circle cx="88" cy="115" r="6" fill="#dde4ef" />
+        <circle cx="232" cy="115" r="14" fill="#071b3d" /><circle cx="232" cy="115" r="6" fill="#dde4ef" />
+        <text x="54" y="79" fill="#071b3d" fontSize="11" fontWeight="700">ONHIGH BUS</text>
       </>
     ),
     front: (
       <>
         <rect width="320" height="150" fill="#e8f1fb" />
-        <rect x="96" y="28" width="128" height="94" rx="16" fill="#058359" />
-        <rect x="108" y="40" width="104" height="34" rx="8" fill="#d9f5e9" />
-        <rect x="112" y="82" width="96" height="10" rx="5" fill="#035e42" />
-        <rect x="96" y="100" width="128" height="10" fill="#AC4425" />
-        <circle cx="116" cy="122" r="9" fill="#071a4d" /><circle cx="204" cy="122" r="9" fill="#071a4d" />
+        <rect x="96" y="28" width="128" height="94" rx="16" fill="#128fca" />
+        <rect x="108" y="40" width="104" height="34" rx="8" fill="#e6f7fd" />
+        <rect x="112" y="82" width="96" height="10" rx="5" fill="#0a4a78" />
+        <rect x="96" y="100" width="128" height="10" fill="#f0b429" />
+        <circle cx="116" cy="122" r="9" fill="#071b3d" /><circle cx="204" cy="122" r="9" fill="#071b3d" />
         <circle cx="112" cy="94" r="5" fill="#f4b860" /><circle cx="208" cy="94" r="5" fill="#f4b860" />
       </>
     ),
@@ -145,35 +167,35 @@ const PhotoArt = ({ variant, full = false }) => {
       <>
         <rect width="320" height="150" fill="#f2f7f5" />
         <path d="M120 150 150 20h20l30 130Z" fill="#dde7e3" />
-        <rect x="40" y="34" width="70" height="30" rx="7" fill="#058359" />
-        <rect x="40" y="72" width="70" height="30" rx="7" fill="#058359" />
-        <rect x="40" y="110" width="70" height="30" rx="7" fill="#046f4b" />
-        <rect x="210" y="34" width="70" height="30" rx="7" fill="#058359" />
-        <rect x="210" y="72" width="70" height="30" rx="7" fill="#058359" />
-        <rect x="210" y="110" width="70" height="30" rx="7" fill="#046f4b" />
+        <rect x="40" y="34" width="70" height="30" rx="7" fill="#128fca" />
+        <rect x="40" y="72" width="70" height="30" rx="7" fill="#128fca" />
+        <rect x="40" y="110" width="70" height="30" rx="7" fill="#0c6f9c" />
+        <rect x="210" y="34" width="70" height="30" rx="7" fill="#128fca" />
+        <rect x="210" y="72" width="70" height="30" rx="7" fill="#128fca" />
+        <rect x="210" y="110" width="70" height="30" rx="7" fill="#0c6f9c" />
         <rect x="150" y="0" width="20" height="14" rx="6" fill="#f4b860" opacity=".7" />
       </>
     ),
     seats: (
       <>
-        <rect width="320" height="150" fill="#eef6f2" />
-        <rect x="46" y="30" width="100" height="86" rx="14" fill="#058359" />
-        <rect x="58" y="42" width="76" height="40" rx="8" fill="#d9f5e9" />
-        <rect x="174" y="30" width="100" height="86" rx="14" fill="#046f4b" />
-        <rect x="186" y="42" width="76" height="40" rx="8" fill="#cfeede" />
-        <rect x="46" y="122" width="228" height="8" rx="4" fill="#AC4425" />
-        <path d="M96 92v18M224 92v18" stroke="#071a4d" strokeWidth="3" opacity=".3" />
+        <rect width="320" height="150" fill="#edf8fc" />
+        <rect x="46" y="30" width="100" height="86" rx="14" fill="#128fca" />
+        <rect x="58" y="42" width="76" height="40" rx="8" fill="#e6f7fd" />
+        <rect x="174" y="30" width="100" height="86" rx="14" fill="#0c6f9c" />
+        <rect x="186" y="42" width="76" height="40" rx="8" fill="#d7f1fb" />
+        <rect x="46" y="122" width="228" height="8" rx="4" fill="#f0b429" />
+        <path d="M96 92v18M224 92v18" stroke="#071b3d" strokeWidth="3" opacity=".3" />
       </>
     ),
     luggage: (
       <>
-        <rect width="320" height="150" fill="#eaf2ef" />
-        <rect x="30" y="46" width="260" height="58" rx="10" fill="#071a4d" opacity=".82" />
-        <rect x="48" y="58" width="52" height="36" rx="6" fill="#AC4425" />
-        <rect x="110" y="58" width="44" height="36" rx="6" fill="#058359" />
+        <rect width="320" height="150" fill="#edf5f9" />
+        <rect x="30" y="46" width="260" height="58" rx="10" fill="#071b3d" opacity=".82" />
+        <rect x="48" y="58" width="52" height="36" rx="6" fill="#f0b429" />
+        <rect x="110" y="58" width="44" height="36" rx="6" fill="#128fca" />
         <rect x="164" y="58" width="60" height="36" rx="6" fill="#f4b860" />
         <rect x="234" y="58" width="40" height="36" rx="6" fill="#dde4ef" />
-        <rect x="30" y="106" width="260" height="9" fill="#AC4425" />
+        <rect x="30" y="106" width="260" height="9" fill="#f0b429" />
       </>
     ),
     night: (
@@ -183,9 +205,9 @@ const PhotoArt = ({ variant, full = false }) => {
         <circle cx="60" cy="28" r="1.6" fill="#fff" /><circle cx="120" cy="46" r="1.4" fill="#fff" />
         <circle cx="180" cy="24" r="1.5" fill="#fff" /><circle cx="212" cy="60" r="1.3" fill="#fff" />
         <path d="M0 108c70-22 130-10 190 8 40 12 84 8 130-8v42H0Z" fill="#12305f" />
-        <rect x="40" y="58" width="240" height="52" rx="12" fill="#0b6b4a" />
+        <rect x="40" y="58" width="240" height="52" rx="12" fill="#0a4a78" />
         <rect x="52" y="68" width="196" height="22" rx="7" fill="#f6e6a8" opacity=".85" />
-        <rect x="40" y="98" width="240" height="9" fill="#AC4425" />
+        <rect x="40" y="98" width="240" height="9" fill="#f0b429" />
         <circle cx="92" cy="116" r="11" fill="#050f26" /><circle cx="228" cy="116" r="11" fill="#050f26" />
       </>
     ),
@@ -355,20 +377,20 @@ function PbBookingSheet({
 
   const boardingPoints = useMemo(
     () =>
-      BOARDING_POINTS.map((point) => ({
+      getPointOptions(from, "bp").map((point) => ({
         ...point,
         time: addMinutes(bus?.departure || "00:00", point.offset),
       })),
-    [bus?.departure]
+    [bus?.departure, from]
   );
 
   const droppingPoints = useMemo(
     () =>
-      DROPPING_POINTS.map((point) => ({
+      getPointOptions(to, "dp", true).map((point) => ({
         ...point,
         time: addMinutes(bus?.arrival || "00:00", point.offset),
       })),
-    [bus?.arrival]
+    [bus?.arrival, to]
   );
 
   const seatsDone = selectedSeats.length > 0;
@@ -1184,3 +1206,4 @@ function PbBookingSheet({
 }
 
 export default PbBookingSheet;
+
