@@ -182,6 +182,7 @@ function App() {
             }
           />
           <Route path="/book-bus" element={<Navigate to="/" replace />} />
+          <Route path="/tenda" element={<PublicBusBooking />} />
           <Route
             path="/register"
             element={

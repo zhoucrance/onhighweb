@@ -14,6 +14,7 @@ const companiesRoute = require("./routes/companiesRoute");
 const notificationsRoute = require("./routes/notificationsRoute");
 const tripsRoute = require("./routes/tripsRoute");
 const helpDeskRoute = require("./routes/helpDeskRoute");
+const tendaDemoRoute = require("./routes/tendaDemoRoute");
 
 app.use("/api/auth", authRoute);
 app.use("/api/users", usersRoute);
@@ -25,6 +26,7 @@ app.use("/api/companies", companiesRoute);
 app.use("/api/notifications", notificationsRoute);
 app.use("/api/help-desk", helpDeskRoute);
 app.use("/api/helpdesk", helpDeskRoute);
+app.use("/api/tenda-demo", tendaDemoRoute);
 const path = require("path");
 if(process.env.NODE_ENV === "production")
 {

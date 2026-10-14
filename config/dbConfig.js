@@ -1,6 +1,12 @@
 const mongoose = require("mongoose");
 
-mongoose.connect(process.env.mongo_url);
+const mongoUri = process.env.mongo_url || process.env.MONGO_URI;
+
+if (mongoUri) {
+  mongoose.connect(mongoUri);
+} else {
+  console.log("Mongo Db Connection Skipped: missing mongo_url or MONGO_URI environment variable");
+}
 
 const db = mongoose.connection;
 

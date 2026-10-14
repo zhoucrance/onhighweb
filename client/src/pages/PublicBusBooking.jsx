@@ -78,7 +78,7 @@ const Icon = ({ name, size = 20 }) => {
 };
 
 const BusIllustration = () => (
-  <svg className="pb-hero-art" viewBox="0 0 560 300" role="img" aria-label="Animated demo coach travelling from Harare to Mutare">
+  <svg className="pb-hero-art" viewBox="0 0 560 300" role="img" aria-label="Animated coach travelling from Harare to Mutare">
     <defs>
       <linearGradient id="pbSky" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stopColor="#dff6ff" />
@@ -103,7 +103,7 @@ const BusIllustration = () => (
       <path d="M238 213h216v17H238Z" fill="#f0b429" />
       <circle cx="283" cy="231" r="17" fill="#071b3d" /><circle cx="283" cy="231" r="7" fill="#dde4ef" />
       <circle cx="414" cy="231" r="17" fill="#071b3d" /><circle cx="414" cy="231" r="7" fill="#dde4ef" />
-      <text x="285" y="219" fill="#128fca" fontSize="12" fontWeight="700">TENDA DEMO</text>
+      <text x="305" y="219" fill="#128fca" fontSize="12" fontWeight="700">TENDA</text>
     </g>
   </svg>
 );
@@ -151,6 +151,7 @@ function PublicBusBooking() {
   const [activeBus, setActiveBus] = useState(null);
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [message, setMessage] = useState("");
+  const [returnedPayment, setReturnedPayment] = useState({ status: "idle", ticket: null, message: "" });
   const resultsRef = useRef(null);
 
   const destinationOptions = useMemo(() => cities.filter((city) => city !== from), [from]);
@@ -159,6 +160,44 @@ function PublicBusBooking() {
     if (from !== to) return;
     setTo(cities.find((city) => city !== from) || "");
   }, [from, to]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentReference =
+      params.get("tendaPaymentReference") || window.sessionStorage.getItem("tendaPaymentReference");
+    if (!paymentReference || params.get("paymentReturn") !== "1") return;
+
+    setReturnedPayment({ status: "checking", ticket: null, message: "Checking your payment..." });
+    const checkReturnedPayment = async () => {
+      try {
+        const response = await fetch(`/api/tenda-demo/payment/status/${encodeURIComponent(paymentReference)}`);
+        const text = await response.text();
+        const result = text ? JSON.parse(text) : {};
+        if (!response.ok || !result.success) throw new Error(result.message || "Payment could not be checked.");
+        if (result.data?.paid && result.data.ticket) {
+          window.sessionStorage.removeItem("tendaPaymentReference");
+          setReturnedPayment({
+            status: "paid",
+            ticket: result.data.ticket,
+            message: "Payment successful. Your ticket is ready.",
+          });
+          window.history.replaceState({}, "", window.location.pathname);
+          return;
+        }
+        setReturnedPayment({
+          status: result.data?.failed ? "failed" : "pending",
+          ticket: null,
+          message: result.data?.failed
+            ? "Payment was not completed."
+            : "Payment is still pending. If you have paid, refresh this page in a moment.",
+        });
+      } catch (error) {
+        setReturnedPayment({ status: "failed", ticket: null, message: error.message || "Payment could not be checked." });
+      }
+    };
+
+    checkReturnedPayment();
+  }, []);
 
   const preparedBuses = useMemo(() => {
     const routeMinutes = getRouteMinutes(from, to);
@@ -232,10 +271,18 @@ function PublicBusBooking() {
   const confirmBooking = (details) => {
     setActiveBus(null);
     setMessage(
-      `Booking held for ${details.contact.name || "your trip"} - seat${
+      `PesePay approved through ${details.paymentCompany || "Tenda Executive"} for US$${
+        details.paymentAmount || "0.05"
+      }. Ticket ${details.ticketNumber} generated for ${details.contact.name || "your trip"} - seat${
         details.seats.length > 1 ? "s" : ""
-      } ${details.seats.join(", ")} - pickup at ${details.pickupPoint?.name} - US$${details.total}. Payment will be connected in the next phase.`
+      } ${details.seats.join(", ")} - pickup at ${details.pickupPoint?.name}.`
     );
+  };
+
+  const handleSessionExpired = (sessionMessage) => {
+    setActiveBus(null);
+    setMessage(sessionMessage || "Payment session timed out. Please start the booking again.");
+    document.querySelector(".pb-search-card")?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   const choosePopularRoute = (route) => {
@@ -243,6 +290,84 @@ function PublicBusBooking() {
     setTo(route.to);
     document.querySelector(".pb-search-card")?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
+
+  const goToHome = () => {
+    window.sessionStorage.removeItem("tendaPaymentReference");
+    window.history.replaceState({}, "", window.location.pathname);
+    setReturnedPayment({ status: "idle", ticket: null, message: "" });
+  };
+
+  // Dedicated ticket page: when returning from payment, show only the ticket,
+  // not the whole home page behind it.
+  if (returnedPayment.status !== "idle") {
+    const t = returnedPayment.ticket;
+    const ticketId = t?.ticketNumber || t?.ticket_number;
+    return (
+      <main className="public-booking-page pb-ticket-page">
+        <header className="pb-header">
+          <div className="pb-shell pb-header-inner">
+            <button type="button" className="pb-brand pb-brand--button" onClick={goToHome} aria-label="Back to home">
+              <span className="pb-brand-mark"><Icon name="bus" size={24} /></span>
+              <span><strong>Tenda</strong><small>BUS</small></span>
+            </button>
+            <nav className="pb-nav" aria-label="Ticket navigation">
+              <button type="button" className="pb-login-link" onClick={goToHome}>
+                <Icon name="arrow" size={18} /> Book another
+              </button>
+            </nav>
+          </div>
+        </header>
+
+        <section className="pb-ticket-view" aria-live="polite">
+          <div className="pb-shell">
+            <div className={`pb-ticket-view-card is-${returnedPayment.status}`}>
+              <span className="pb-section-label">
+                {returnedPayment.status === "paid" ? "Your ticket" : "Payment return"}
+              </span>
+              <h1>{returnedPayment.message}</h1>
+
+              {t ? (
+                <article className="pb-ticket-doc">
+                  <header>
+                    <div><strong>{t.bus_name}</strong><small>{t.route}</small></div>
+                    <span className="pb-ticket-ref">{ticketId}</span>
+                  </header>
+                  <dl>
+                    <div><dt>Passenger</dt><dd>{t.passenger_name}</dd></div>
+                    <div><dt>Phone</dt><dd>{t.phone}</dd></div>
+                    <div><dt>Date</dt><dd>{t.date}</dd></div>
+                    <div><dt>Time</dt><dd>{t.time}</dd></div>
+                    <div><dt>Seat</dt><dd>{t.seat}</dd></div>
+                    <div><dt>Boarding</dt><dd>{t.boarding_point}</dd></div>
+                    <div><dt>Drop-off</dt><dd>{t.drop_off_point}</dd></div>
+                    <div><dt>Amount</dt><dd>{t.amount}</dd></div>
+                    <div><dt>Payment</dt><dd>{t.payment_method}</dd></div>
+                  </dl>
+                  <footer>
+                    <a className="pb-ticket-btn" href={`/api/tenda-demo/ticket/${encodeURIComponent(ticketId)}.pdf`} target="_blank" rel="noreferrer">View ticket (PDF)</a>
+                    <a className="pb-ticket-btn pb-ticket-btn--outline" href={`/api/tenda-demo/ticket/${encodeURIComponent(ticketId)}.pdf?download=1`} target="_blank" rel="noreferrer">Download</a>
+                  </footer>
+                </article>
+              ) : (
+                <div className="pb-ticket-pending">
+                  {returnedPayment.status === "checking" && <span className="pb-spinner" />}
+                  <button type="button" className="pb-ticket-btn" onClick={goToHome}>Back to home</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <footer className="pb-footer">
+          <div className="pb-shell pb-footer-inner">
+            <div className="pb-brand pb-brand--footer"><span className="pb-brand-mark"><Icon name="bus" size={24} /></span><span><strong>Tenda</strong><small>BUS</small></span></div>
+            <p>Making every journey feel simple.</p>
+            <span>(c) {new Date().getFullYear()} Tenda Bus</span>
+          </div>
+        </footer>
+      </main>
+    );
+  }
 
   return (
     <main className="public-booking-page">
@@ -362,7 +487,7 @@ function PublicBusBooking() {
           <div className="pb-steps">
             <article><span>01</span><div className="pb-step-icon"><Icon name="pin" size={24} /></div><h3>Route</h3><p>Choose your stops and date.</p></article>
             <article><span>02</span><div className="pb-step-icon"><Icon name="bus" size={24} /></div><h3>Seat</h3><p>Pick a bus and seat.</p></article>
-            <article><span>03</span><div className="pb-step-icon"><Icon name="ticket" size={24} /></div><h3>Ticket</h3><p>Add passenger details.</p></article>
+            <article><span>03</span><div className="pb-step-icon"><Icon name="ticket" size={24} /></div><h3>Pay & ticket</h3><p>Confirm with PesePay and receive the ticket.</p></article>
           </div>
         </div>
       </section>
@@ -386,6 +511,7 @@ function PublicBusBooking() {
         onToggleSeat={toggleSeat}
         onClose={closeSheet}
         onSubmit={confirmBooking}
+        onSessionExpired={handleSessionExpired}
       />
 
       <footer className="pb-footer">

@@ -34,6 +34,19 @@ const ICONS = {
       <path d="m9 12 2 2 4-4" />
     </>
   ),
+  wallet: (
+    <>
+      <path d="M4 7h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a3 3 0 0 1 3-3h12" />
+      <path d="M16 13h5" />
+      <circle cx="17.5" cy="13" r=".7" />
+    </>
+  ),
+  ticket: (
+    <>
+      <path d="M2 9a3 3 0 0 0 0 6v4h20v-4a3 3 0 0 0 0-6V5H2v4Z" />
+      <path d="M13 5v2m0 4v2m0 4v2" />
+    </>
+  ),
   chevronLeft: <path d="m15 18-6-6 6-6" />,
   chevronRight: <path d="m9 18 6-6-6-6" />,
   refund: (
@@ -83,7 +96,31 @@ const TABS = [
   { id: "seats", label: "Select seat", icon: "seat" },
   { id: "points", label: "Pickup & drop", icon: "pin" },
   { id: "passenger", label: "Passenger details", icon: "user" },
+  { id: "payment", label: "PesePay", icon: "wallet" },
+  { id: "ticket", label: "Ticket", icon: "ticket" },
 ];
+
+const PESEPAY_COMPANY = "Tenda Executive";
+const PESEPAY_AMOUNT = "0.05";
+const PESEPAY_METHODS = ["Card Payment", "EcoCash"];
+const PAYMENT_WINDOW_SECONDS = 8 * 60;
+
+const readApiJson = async (response) => {
+  const text = await response.text();
+  if (!text) {
+    throw new Error(`Server returned an empty response (${response.status}). Make sure the backend is running.`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error(`Server returned a non-JSON response (${response.status}): ${text.slice(0, 160)}`);
+  }
+};
+
+const formatPaymentSeconds = (seconds) => {
+  const safeSeconds = Math.max(0, Number(seconds) || 0);
+  return `${String(Math.floor(safeSeconds / 60)).padStart(2, "0")}:${String(safeSeconds % 60).padStart(2, "0")}`;
+};
 
 /** "07:30" + 15 -> "07:45" (wraps across midnight). */
 const addMinutes = (time, minutes) => {
@@ -149,7 +186,7 @@ const PhotoArt = ({ variant, full = false }) => {
         <rect x="34" y="95" width="252" height="11" fill="#f0b429" />
         <circle cx="88" cy="115" r="14" fill="#071b3d" /><circle cx="88" cy="115" r="6" fill="#dde4ef" />
         <circle cx="232" cy="115" r="14" fill="#071b3d" /><circle cx="232" cy="115" r="6" fill="#dde4ef" />
-        <text x="54" y="79" fill="#071b3d" fontSize="11" fontWeight="700">ONHIGH BUS</text>
+        <text x="54" y="79" fill="#071b3d" fontSize="11" fontWeight="700">TENDA BUS</text>
       </>
     ),
     front: (
@@ -253,6 +290,7 @@ function PbBookingSheet({
   onToggleSeat,
   onClose,
   onSubmit,
+  onSessionExpired,
 }) {
   // Keep the sheet mounted through its exit animation.
   const [mounted, setMounted] = useState(open);
@@ -263,6 +301,15 @@ function PbBookingSheet({
   const [dropPoint, setDropPoint] = useState("");
   const [contact, setContact] = useState({ name: "", phone: "", email: "" });
   const [passengers, setPassengers] = useState({});
+  const [paymentMethod, setPaymentMethod] = useState(PESEPAY_METHODS[0]);
+  const [paymentStatus, setPaymentStatus] = useState("idle");
+  const [paymentReference, setPaymentReference] = useState("");
+  const [paymentCompany, setPaymentCompany] = useState(PESEPAY_COMPANY);
+  const [paymentRedirectUrl, setPaymentRedirectUrl] = useState("");
+  const [paymentExpiresAt, setPaymentExpiresAt] = useState(null);
+  const [paymentSecondsLeft, setPaymentSecondsLeft] = useState(PAYMENT_WINDOW_SECONDS);
+  const [ticket, setTicket] = useState(null);
+  const [ticketNumber, setTicketNumber] = useState("");
   const [hint, setHint] = useState("");
   const [activeInfoTab, setActiveInfoTab] = useState("cancellation");
   const [activePhoto, setActivePhoto] = useState(0);
@@ -280,6 +327,7 @@ function PbBookingSheet({
   const chipRefs = useRef({});
   const suppressSpyRef = useRef(false);
   const lightboxTrackRef = useRef(null);
+  const paymentStartedRef = useRef(false);
 
   useEffect(() => {
     if (open) {
@@ -305,6 +353,16 @@ function PbBookingSheet({
     setDropPoint("");
     setContact({ name: "", phone: "", email: "" });
     setPassengers({});
+    setPaymentMethod(PESEPAY_METHODS[0]);
+    setPaymentStatus("idle");
+    setPaymentReference("");
+    setPaymentCompany(PESEPAY_COMPANY);
+    setPaymentRedirectUrl("");
+    setPaymentExpiresAt(null);
+    setPaymentSecondsLeft(PAYMENT_WINDOW_SECONDS);
+    paymentStartedRef.current = false;
+    setTicket(null);
+    setTicketNumber("");
     setHint("");
     setActiveInfoTab("cancellation");
     setActivePhoto(0);
@@ -397,10 +455,62 @@ function PbBookingSheet({
   const pointsDone = Boolean(pickupPoint && dropPoint);
   const passengerDone =
     !isBlank(contact.name) &&
-    String(contact.phone || "").replace(/\D/g, "").length >= 9 &&
-    selectedSeats.every((seat) => !isBlank(passengers[seat]?.name));
+    String(contact.phone || "").replace(/\D/g, "").length >= 9;
+  const paymentDone = paymentStatus === "paid";
+  const ticketDone = paymentDone && Boolean(ticketNumber || ticket);
+  const canRetryPayment = paymentStatus === "failed" || paymentStatus === "expired";
 
-  const completion = { seats: seatsDone, points: pointsDone, passenger: passengerDone };
+  const completion = {
+    seats: seatsDone,
+    points: pointsDone,
+    passenger: passengerDone,
+    payment: paymentDone,
+    ticket: ticketDone,
+  };
+
+  useEffect(() => {
+    if (!open || activeTab !== "payment" || !passengerDone || paymentStartedRef.current || paymentReference) return;
+    paymentStartedRef.current = true;
+    completePayment();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, activeTab, passengerDone, paymentReference]);
+
+  useEffect(() => {
+    if (!paymentExpiresAt || paymentDone || !open) return undefined;
+    const tick = () => {
+      const seconds = Math.max(0, Math.ceil((paymentExpiresAt - Date.now()) / 1000));
+      setPaymentSecondsLeft(seconds);
+      if (seconds > 0) return;
+      setPaymentStatus("expired");
+      setPaymentReference("");
+      setPaymentRedirectUrl("");
+      setPaymentExpiresAt(null);
+      paymentStartedRef.current = false;
+      setHint("Payment session timed out. Click Pay again to start a new checkout.");
+      onSessionExpired?.("Payment session timed out. You can start a new checkout.");
+    };
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, [paymentDone, paymentExpiresAt, onClose, onSessionExpired, open]);
+
+  useEffect(() => {
+    if (
+      !paymentReference ||
+      paymentDone ||
+      paymentStatus === "processing" ||
+      paymentStatus === "checking" ||
+      paymentStatus === "expired" ||
+      paymentStatus === "failed"
+    ) {
+      return undefined;
+    }
+    const timer = window.setInterval(() => {
+      confirmRealPayment(paymentReference, { silentPending: true });
+    }, 6000);
+    return () => window.clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentDone, paymentReference, paymentStatus]);
 
   const updatePassenger = (seat, patch) =>
     setPassengers((current) => ({
@@ -468,18 +578,142 @@ function PbBookingSheet({
       return;
     }
     if (!passengerDone) {
-      setHint("Add a contact name, a valid phone number and a name for each seat.");
+      setHint("Add your name and a valid phone number to continue.");
       return;
     }
-    onSubmit?.({
-      busId: bus?.id,
-      seats: selectedSeats,
-      pickupPoint: boardingPoints.find((point) => point.id === pickupPoint),
-      dropPoint: droppingPoints.find((point) => point.id === dropPoint),
-      contact,
-      passengers,
-      total,
-    });
+    if (activeTab === "payment") {
+      completePayment();
+      return;
+    }
+    if (activeTab === "ticket") {
+      onClose();
+      return;
+    }
+    if (activeTab === "passenger") {
+      goToTab("payment");
+      paymentStartedRef.current = true;
+      completePayment();
+      return;
+    }
+    goToTab("payment");
+  };
+
+  const confirmRealPayment = async (reference, options = {}) => {
+    const paymentRef = reference || paymentReference;
+    if (!paymentRef) {
+      setHint("Start the PesePay payment first.");
+      return;
+    }
+    setPaymentStatus("checking");
+    setHint("");
+    try {
+      const response = await fetch(`/api/tenda-demo/payment/status/${encodeURIComponent(paymentRef)}`);
+      const result = await readApiJson(response);
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Unable to verify payment.");
+      }
+      const data = result.data || {};
+      setPaymentCompany(data.selectedCompany?.companyName || paymentCompany);
+      if (data.paid && data.ticket) {
+        setTicket(data.ticket);
+        setTicketNumber(data.ticket.ticketNumber || data.ticket.ticket_number || "");
+        setPaymentStatus("paid");
+        setActiveTab("ticket");
+        onSubmit?.({
+          ticketNumber: data.ticket.ticketNumber || data.ticket.ticket_number,
+          paymentProvider: "PesePay",
+          paymentCompany: data.selectedCompany?.companyName || paymentCompany,
+          paymentMethod,
+          paymentAmount: PESEPAY_AMOUNT,
+          paymentReference: paymentRef,
+          seats: selectedSeats,
+          pickupPoint: boardingPoints.find((point) => point.id === pickupPoint),
+          dropPoint: droppingPoints.find((point) => point.id === dropPoint),
+          contact,
+          passengers,
+          total,
+        });
+        return;
+      }
+      if (data.failed) {
+        setPaymentStatus("failed");
+        setHint(`PesePay status: ${data.status || "failed"}. Please try again.`);
+        return;
+      }
+      setPaymentStatus("pending");
+      if (!options.silentPending) {
+        setHint(`PesePay status: ${data.status || "pending"}. Complete payment to receive your ticket.`);
+      }
+    } catch (error) {
+      setPaymentStatus("pending");
+      if (!options.silentPending) setHint(error.message || "Payment verification failed.");
+    }
+  };
+
+  const completePayment = async () => {
+    if (!passengerDone) {
+      setHint("Passenger details must be complete before payment.");
+      goToTab("passenger");
+      return;
+    }
+    if (paymentStatus === "processing" || paymentStatus === "checking") return;
+    if (canRetryPayment) {
+      setPaymentReference("");
+      setPaymentRedirectUrl("");
+      setPaymentExpiresAt(null);
+      setPaymentSecondsLeft(PAYMENT_WINDOW_SECONDS);
+      paymentStartedRef.current = true;
+    } else if (paymentReference) {
+      confirmRealPayment(paymentReference);
+      return;
+    }
+    setHint("");
+    setPaymentStatus("processing");
+    try {
+      const response = await fetch("/api/tenda-demo/payment/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bus,
+          from,
+          to,
+          readableDate,
+          seats: selectedSeats,
+          pickupPoint: boardingPoints.find((point) => point.id === pickupPoint),
+          dropPoint: droppingPoints.find((point) => point.id === dropPoint),
+          contact,
+          passengers,
+          total,
+          paymentMethod,
+          paymentPhone: contact.phone,
+        }),
+      });
+      const result = await readApiJson(response);
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "PesePay payment could not be started.");
+      }
+      const data = result.data || {};
+      setPaymentReference(data.referenceNumber || "");
+      setPaymentCompany(data.selectedCompany?.companyName || PESEPAY_COMPANY);
+      setPaymentRedirectUrl(data.redirectUrl || "");
+      setTicket(data.ticket || null);
+      setTicketNumber(data.ticket?.ticketNumber || data.ticket?.ticket_number || "");
+      setPaymentStatus("pending");
+      setPaymentExpiresAt(Date.now() + PAYMENT_WINDOW_SECONDS * 1000);
+      setPaymentSecondsLeft(PAYMENT_WINDOW_SECONDS);
+      if (data.referenceNumber) {
+        window.sessionStorage.setItem("tendaPaymentReference", data.referenceNumber);
+      }
+      if (data.redirectUrl) {
+        setHint("Opening PesePay checkout. Complete payment to receive your ticket.");
+        window.location.assign(data.redirectUrl);
+      } else {
+        setHint("PesePay request sent. Approve it on the customer phone to receive your ticket.");
+      }
+    } catch (error) {
+      setPaymentStatus("failed");
+      setHint(error.message || "PesePay payment failed to start.");
+    }
   };
 
   // Track which photo is centred while the gallery is swiped.
@@ -605,8 +839,28 @@ function PbBookingSheet({
 
   if (!mounted || !bus) return null;
 
+  const currentPickupPoint = boardingPoints.find((point) => point.id === pickupPoint);
+  const currentDropPoint = droppingPoints.find((point) => point.id === dropPoint);
+  const firstPassengerName =
+    passengers[selectedSeats[0]]?.name || contact.name || "Passenger";
   const actionLabel =
-    activeTab === "passenger" ? "Confirm booking" : "Continue";
+    activeTab === "payment"
+      ? paymentStatus === "processing"
+        ? "Starting PesePay"
+        : paymentStatus === "checking"
+        ? "Checking"
+        : canRetryPayment
+        ? `Pay US$${PESEPAY_AMOUNT}`
+        : paymentReference
+        ? "Check payment"
+        : `Pay US$${PESEPAY_AMOUNT}`
+      : activeTab === "ticket"
+      ? "Done"
+      : activeTab === "passenger"
+      ? "Continue to payment"
+      : "Continue";
+  const continueDisabled =
+    activeTab === "payment" && (paymentStatus === "processing" || paymentStatus === "checking");
 
   return (
     <div
@@ -1023,81 +1277,160 @@ function PbBookingSheet({
                   </label>
                 </div>
 
-                <div className="pb-sheet-panel-head pb-sheet-panel-head--spaced">
+                <p className="pb-sheet-note">
+                  <SheetIcon name="user" size={15} /> One booking covers all your
+                  selected seats{selectedSeats.length ? ` (${selectedSeats.join(", ")})` : ""}.
+                </p>
+              </>
+            )}
+
+            {activeTab === "payment" && (
+              <>
+                <div className="pb-sheet-panel-head">
                   <div>
-                    <span className="pb-section-label">Passengers</span>
-                    <h3>
-                      {selectedSeats.length
-                        ? `${selectedSeats.length} seat${
-                            selectedSeats.length > 1 ? "s" : ""
-                          } selected`
-                        : "No seats selected yet"}
-                    </h3>
+                    <span className="pb-section-label">PesePay checkout</span>
+                    <h3>Payment for Tenda</h3>
+                  </div>
+                  <span className="pb-demo-badge">Amount US${PESEPAY_AMOUNT}</span>
+                </div>
+
+                <div className={`pb-payment-card is-${paymentStatus}`}>
+                  <div className="pb-payment-orbit" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                    <SheetIcon name={paymentDone ? "check" : "wallet"} size={34} />
+                  </div>
+                  <div>
+                    <span className="pb-section-label">Selected company</span>
+                    <h4>{paymentCompany}</h4>
+                    <p>
+                      This uses a real PesePay request for US${PESEPAY_AMOUNT},
+                      even when the trip fare is US${total}. Card Payment opens the
+                      hosted PesePay payment page.
+                    </p>
                   </div>
                 </div>
 
-                {selectedSeats.length ? (
-                  <div className="pb-passenger-list">
-                    {selectedSeats.map((seat) => (
-                      <div className="pb-passenger" key={seat}>
-                        <span className="pb-passenger-seat">Seat {seat}</span>
-                        <div className="pb-passenger-fields">
-                          <label className="pb-input">
-                            <span>Passenger name</span>
-                            <input
-                              type="text"
-                              value={passengers[seat]?.name || ""}
-                              placeholder="Name as on ID"
-                              onChange={(event) => {
-                                updatePassenger(seat, { name: event.target.value });
-                                setHint("");
-                              }}
-                            />
-                          </label>
-                          <label className="pb-input pb-input--narrow">
-                            <span>Age</span>
-                            <input
-                              type="number"
-                              min="0"
-                              max="120"
-                              inputMode="numeric"
-                              value={passengers[seat]?.age || ""}
-                              placeholder="—"
-                              onChange={(event) =>
-                                updatePassenger(seat, { age: event.target.value })
-                              }
-                            />
-                          </label>
-                          <div className="pb-input pb-input--narrow">
-                            <span>Gender</span>
-                            <div className="pb-gender">
-                              {["F", "M"].map((option) => (
-                                <button
-                                  key={option}
-                                  type="button"
-                                  className={
-                                    passengers[seat]?.gender === option
-                                      ? "is-active"
-                                      : ""
-                                  }
-                                  aria-pressed={passengers[seat]?.gender === option}
-                                  onClick={() =>
-                                    updatePassenger(seat, { gender: option })
-                                  }
-                                >
-                                  {option}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
+                <div className="pb-payment-methods" aria-label="PesePay payment method">
+                  {PESEPAY_METHODS.map((method) => (
+                    <button
+                      key={method}
+                      type="button"
+                      className={paymentMethod === method ? "is-active" : ""}
+                      onClick={() => setPaymentMethod(method)}
+                      disabled={paymentStatus === "processing"}
+                    >
+                      <SheetIcon name="wallet" size={16} />
+                      {method}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="pb-payment-summary">
+                  <div><span>Trip fare</span><strong>US${total}</strong></div>
+                  <div><span>PesePay charge</span><strong>US${PESEPAY_AMOUNT}</strong></div>
+                  <div><span>Payment method</span><strong>{paymentMethod}</strong></div>
+                  {paymentReference && <div><span>Time left</span><strong>{formatPaymentSeconds(paymentSecondsLeft)}</strong></div>}
+                </div>
+
+                {(paymentStatus === "processing" || paymentStatus === "checking") && (
+                  <div className="pb-payment-progress" role="status">
+                    <span />
+                    <strong>
+                      {paymentStatus === "checking" ? "Checking PesePay status..." : "Connecting to PesePay..."}
+                    </strong>
+                  </div>
+                )}
+
+                {paymentReference && (
+                  <p className="pb-payment-reference">
+                    Reference <strong>{paymentReference}</strong>
+                    {paymentRedirectUrl && (
+                      <a href={paymentRedirectUrl} target="_blank" rel="noreferrer">Open checkout</a>
+                    )}
+                  </p>
+                )}
+
+                {paymentDone && (
+                  <p className="pb-payment-success" role="status">
+                    <SheetIcon name="check" size={17} /> Payment approved. Ticket generated.
+                  </p>
+                )}
+              </>
+            )}
+
+            {activeTab === "ticket" && (
+              <>
+                {ticketDone ? (
+                  <div className="pb-ticket-stage">
+                    <div className="pb-ticket-confetti" aria-hidden="true">
+                      <span /><span /><span /><span /><span />
+                    </div>
+                    <article className="pb-demo-ticket" aria-label="Generated Tenda ticket">
+                      <header>
+                        <div>
+                          <span>BUS TICKET</span>
+                          <strong>{ticket?.bus_name || bus.operator}</strong>
                         </div>
-                      </div>
-                    ))}
+                        <b>{ticket?.ticketNumber || ticket?.ticket_number || ticketNumber}</b>
+                      </header>
+                      <section className="pb-ticket-passenger">
+                        <span>Passenger</span>
+                        <strong>{ticket?.passenger_name || firstPassengerName}</strong>
+                        <small>{ticket?.phone || contact.phone || "Phone not supplied"}</small>
+                      </section>
+                      <section className="pb-ticket-route">
+                        <div><span>From</span><strong>{ticket?.from || from}</strong><small>{ticket?.boarding_point || currentPickupPoint?.name}</small></div>
+                        <i aria-hidden="true" />
+                        <div><span>To</span><strong>{ticket?.to || to}</strong><small>{ticket?.drop_off_point || currentDropPoint?.name}</small></div>
+                      </section>
+                      <section className="pb-ticket-grid">
+                        <div><span>Date</span><strong>{ticket?.date || readableDate}</strong></div>
+                        <div><span>Time</span><strong>{ticket?.time || bus.departure}</strong></div>
+                        <div><span>Seat</span><strong>{ticket?.seat || selectedSeats.join(", ")}</strong></div>
+                        <div><span>Paid</span><strong>{ticket?.amount || `US$${PESEPAY_AMOUNT}`}</strong></div>
+                      </section>
+                      <footer>
+                        <div className="pb-ticket-qr" aria-hidden="true">
+                          {Array.from({ length: 25 }, (_, index) => (
+                            <span key={index} className={index % 3 === 0 || index % 7 === 0 ? "is-dark" : ""} />
+                          ))}
+                        </div>
+                        <div>
+                          <strong>PAYMENT CONFIRMED</strong>
+                          <small>PesePay - {paymentMethod} - {paymentCompany}</small>
+                          {(ticket?.ticketNumber || ticket?.ticket_number || ticketNumber) && (
+                            <span className="pb-ticket-actions">
+                              <a
+                                href={`/api/tenda-demo/ticket/${encodeURIComponent(
+                                  ticket?.ticketNumber || ticket?.ticket_number || ticketNumber
+                                )}.pdf`}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                View ticket
+                              </a>
+                              <a
+                                href={`/api/tenda-demo/ticket/${encodeURIComponent(
+                                  ticket?.ticketNumber || ticket?.ticket_number || ticketNumber
+                                )}.pdf`}
+                                download
+                              >
+                                Download
+                              </a>
+                            </span>
+                          )}
+                        </div>
+                      </footer>
+                    </article>
                   </div>
                 ) : (
-                  <p className="pb-sheet-empty">
-                    Go back to <strong>Select seat</strong> and pick a seat first.
-                  </p>
+                  <div className="pb-ticket-waiting">
+                    <SheetIcon name="ticket" size={32} />
+                    <h3>Ticket appears after PesePay approval</h3>
+                    <p>Go back to PesePay and complete the US${PESEPAY_AMOUNT} payment.</p>
+                  </div>
                 )}
               </>
             )}
@@ -1121,13 +1454,12 @@ function PbBookingSheet({
               </span>
               <strong>US${total}</strong>
             </div>
-            <button type="button" className="pb-continue" onClick={advance}>
+            <button type="button" className="pb-continue" onClick={advance} disabled={continueDisabled}>
               {actionLabel} <SheetIcon name="arrow" size={17} />
             </button>
           </div>
           <small className="pb-sheet-secure">
-            <SheetIcon name="shield" size={14} /> No payment is taken in this UI
-            preview.
+            <SheetIcon name="shield" size={14} /> PesePay charge is US${PESEPAY_AMOUNT}; company: {paymentCompany}.
           </small>
         </footer>
       </section>
