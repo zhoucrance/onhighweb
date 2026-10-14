@@ -1293,7 +1293,6 @@
   transform: none !important;
 }
 
-.public-booking-page .pb-hero-art,
 .public-booking-page .pb-how,
 .public-booking-page .pb-popular,
 .public-booking-page .pb-nav > a:not(.pb-login-link) {
@@ -1304,6 +1303,31 @@
 .public-booking-page .pb-media-card,
 .public-booking-page .pb-lightbox {
   display: none !important;
+}
+
+.public-booking-page .pb-sheet-hint,
+.public-booking-page .pb-payment-reference {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.public-booking-page .pb-sheet-foot {
+  overflow: hidden;
+}
+
+.public-booking-page .pb-sheet-foot-row {
+  align-items: stretch;
+}
+
+.public-booking-page .pb-sheet-total {
+  flex: 0 1 35%;
+}
+
+.public-booking-page .pb-sheet-foot .pb-continue {
+  min-width: 0;
+  max-width: none;
 }
 
 .public-booking-page .pb-seats-layout {

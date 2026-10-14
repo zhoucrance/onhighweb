@@ -117,6 +117,22 @@ const readApiJson = async (response) => {
   }
 };
 
+const friendlyPaymentMessage = (message, fallback = "Payment could not be verified yet. Please try again in a moment.") => {
+  const text = String(message || "").trim();
+  if (!text) return fallback;
+  if (/transaction was not found|given reference number|reference not found/i.test(text)) {
+    return "Payment is not confirmed yet. Please wait a moment, then check again.";
+  }
+  if (/integration key.*not valid|not active|disabled/i.test(text)) {
+    return "PesePay is not active for this payment method. Please contact support.";
+  }
+  if (/PesePay HTTP 5\d\d/i.test(text)) {
+    return "PesePay is taking longer than expected. Please wait a moment, then check again.";
+  }
+  if (/^\{/.test(text) || text.length > 140) return fallback;
+  return text;
+};
+
 const formatPaymentSeconds = (seconds) => {
   const safeSeconds = Math.max(0, Number(seconds) || 0);
   return `${String(Math.floor(safeSeconds / 60)).padStart(2, "0")}:${String(safeSeconds % 60).padStart(2, "0")}`;
@@ -637,7 +653,7 @@ function PbBookingSheet({
       }
       if (data.failed) {
         setPaymentStatus("failed");
-        setHint(`PesePay status: ${data.status || "failed"}. Please try again.`);
+        setHint(friendlyPaymentMessage(data.status, "Payment was not completed. Please try again."));
         return;
       }
       setPaymentStatus("pending");
@@ -646,7 +662,7 @@ function PbBookingSheet({
       }
     } catch (error) {
       setPaymentStatus("pending");
-      if (!options.silentPending) setHint(error.message || "Payment verification failed.");
+      if (!options.silentPending) setHint(friendlyPaymentMessage(error.message));
     }
   };
 
@@ -712,7 +728,7 @@ function PbBookingSheet({
       }
     } catch (error) {
       setPaymentStatus("failed");
-      setHint(error.message || "PesePay payment failed to start.");
+      setHint(friendlyPaymentMessage(error.message, "PesePay payment failed to start. Please try again."));
     }
   };
 

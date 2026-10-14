@@ -221,6 +221,27 @@ const markBookingPaymentFailed = async (booking, paymentResult = {}) => {
   return booking;
 };
 
+const isPaymentReferencePendingError = (error) =>
+  /transaction was not found|given reference number|reference not found/i.test(String(error?.message || ""));
+
+const sendPendingPaymentStatus = (res, booking, company, referenceNumberValue, message) =>
+  res.send({
+    success: true,
+    message: message || "Payment is still pending.",
+    data: {
+      paid: false,
+      failed: false,
+      status: "PENDING",
+      referenceNumber: referenceNumberValue || booking?.paymentReference,
+      merchantReference: booking?.transactionId,
+      selectedCompany: company
+        ? { companyId: company._id, companyName: company.companyName, source: company.source || "mongo" }
+        : null,
+      ticket: null,
+      raw: null,
+    },
+  });
+
 const pdfEscape = (value) =>
   String(value || "")
     .replace(/\\/g, "\\\\")
@@ -475,7 +496,21 @@ router.get("/payment/status/:referenceNumber", async (req, res) => {
       encryptionKey: company.pesepayEncryptionKey,
       req,
     });
-    const paymentResult = await checkPayment({ config, referenceNumber: req.params.referenceNumber });
+    let paymentResult;
+    try {
+      paymentResult = await checkPayment({ config, referenceNumber: req.params.referenceNumber });
+    } catch (error) {
+      if (isPaymentReferencePendingError(error)) {
+        return sendPendingPaymentStatus(
+          res,
+          booking,
+          company,
+          req.params.referenceNumber,
+          "Payment has not been confirmed yet. Please check again shortly."
+        );
+      }
+      throw error;
+    }
     if (isPaid(paymentResult)) await markBookingPaid(booking, paymentResult);
     if (isFailed(paymentResult)) await markBookingPaymentFailed(booking, paymentResult);
     res.send({
@@ -513,7 +548,21 @@ router.get("/payment/status-by-merchant/:merchantReference", async (req, res) =>
       encryptionKey: company.pesepayEncryptionKey,
       req,
     });
-    const paymentResult = await checkPayment({ config, referenceNumber: booking.paymentReference });
+    let paymentResult;
+    try {
+      paymentResult = await checkPayment({ config, referenceNumber: booking.paymentReference });
+    } catch (error) {
+      if (isPaymentReferencePendingError(error)) {
+        return sendPendingPaymentStatus(
+          res,
+          booking,
+          company,
+          booking.paymentReference,
+          "Payment has not been confirmed yet. Please check again shortly."
+        );
+      }
+      throw error;
+    }
     if (isPaid(paymentResult)) await markBookingPaid(booking, paymentResult);
     if (isFailed(paymentResult)) await markBookingPaymentFailed(booking, paymentResult);
     res.send({
