@@ -13,6 +13,9 @@
   min-width: 0;
 }
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.479);
   width: 100%;
   height: 56px;

@@ -1,28 +1,30 @@
 import "antd/dist/antd.min.css";
 import "./resourses/global.css";
+import React, { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import PublicBusBooking from "./pages/PublicBusBooking";
-import PublicRoute from "./components/PublicRoute";
-import ProtectedRoute from "./components/ProtectedRoute";
 import Loader from "./components/Loader";
 import { useSelector } from "react-redux";
-import AdminHome from "./pages/Admin/AdminHome";
-import AdminBuses from "./pages/Admin/AdminBuses";
-import AdminUsers from "./pages/Admin/AdminUsers";
-import BookNow from "./pages/BookNow";
-import Bookings from "./pages/Bookings";
-import AdminBookingManagement from "./pages/Admin/AdminBookingManagement";
-import AdminRoutes from "./pages/Admin/AdminRoutes";
-import AdminTrips from "./pages/Admin/AdminTrips";
-import AdminSeatAvailability from "./pages/Admin/AdminSeatAvailability";
-import AdminServiceFees from "./pages/Admin/AdminServiceFees";
-import AdminHelpDesk from "./pages/Admin/AdminHelpDesk";
-import AdminPesepaySettings from "./pages/Admin/AdminPesepaySettings";
-import AccessDenied from "./pages/AccessDenied";
 import { hasPermission, isSuperAdmin } from "./helpers/permissions";
+
+const Home = lazy(() => import("./pages/Home"));
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const PublicBusBooking = lazy(() => import("./pages/PublicBusBooking"));
+const PublicRoute = lazy(() => import("./components/PublicRoute"));
+const ProtectedRoute = lazy(() => import("./components/ProtectedRoute"));
+const AdminHome = lazy(() => import("./pages/Admin/AdminHome"));
+const AdminBuses = lazy(() => import("./pages/Admin/AdminBuses"));
+const AdminUsers = lazy(() => import("./pages/Admin/AdminUsers"));
+const BookNow = lazy(() => import("./pages/BookNow"));
+const Bookings = lazy(() => import("./pages/Bookings"));
+const AdminBookingManagement = lazy(() => import("./pages/Admin/AdminBookingManagement"));
+const AdminRoutes = lazy(() => import("./pages/Admin/AdminRoutes"));
+const AdminTrips = lazy(() => import("./pages/Admin/AdminTrips"));
+const AdminSeatAvailability = lazy(() => import("./pages/Admin/AdminSeatAvailability"));
+const AdminServiceFees = lazy(() => import("./pages/Admin/AdminServiceFees"));
+const AdminHelpDesk = lazy(() => import("./pages/Admin/AdminHelpDesk"));
+const AdminPesepaySettings = lazy(() => import("./pages/Admin/AdminPesepaySettings"));
+const AccessDenied = lazy(() => import("./pages/AccessDenied"));
 
 function PermissionRoute({ children, permission, superAdminOnly = false }) {
   const { user } = useSelector((state) => state.users);
@@ -45,37 +47,40 @@ function PermissionRoute({ children, permission, superAdminOnly = false }) {
   return children;
 }
 
+function HomeGate() {
+  if (!localStorage.getItem("token")) return <PublicBusBooking />;
+  return (
+    <ProtectedRoute>
+      <Home />
+    </ProtectedRoute>
+  );
+}
+
 function App() {
   const { loading } = useSelector((state) => state.alerts);
   return (
     <div>
       {loading && <Loader />}
       <BrowserRouter>
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute publicFallback={<PublicBusBooking />}>
-                <Home />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/book-now/:id"
-            element={
-              <ProtectedRoute>
-                <BookNow />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/bookings"
-            element={
-              <ProtectedRoute>
-                <Bookings />
-              </ProtectedRoute>
-            }
-          />
+        <Suspense fallback={<Loader />}>
+          <Routes>
+            <Route path="/" element={<HomeGate />} />
+            <Route
+              path="/book-now/:id"
+              element={
+                <ProtectedRoute>
+                  <BookNow />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/bookings"
+              element={
+                <ProtectedRoute>
+                  <Bookings />
+                </ProtectedRoute>
+              }
+            />
 
           <Route
             path="/admin/dashboard"
@@ -199,7 +204,8 @@ function App() {
               </PublicRoute>
             }
           />
-        </Routes>
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </div>
   );

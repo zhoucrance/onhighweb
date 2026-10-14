@@ -29,9 +29,8 @@
 .pb-shell { width: min(1180px, calc(100% - 32px)); margin-inline: auto; }
 .pb-icon { display: block; flex: 0 0 auto; }
 
-.pb-header { position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,.94); border-bottom: 1px solid rgba(220,231,226,.85); backdrop-filter: blur(14px); padding-top: env(safe-area-inset-top, 0px); transition: transform .3s ease, box-shadow .3s ease; will-change: transform; }
-/* Auto-hide: slide the header up when scrolling down, show it when scrolling up. */
-.pb-header.is-hidden { transform: translateY(-100%); }
+.pb-header { position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,.94); border-bottom: 1px solid rgba(220,231,226,.85); backdrop-filter: blur(14px); padding-top: env(safe-area-inset-top, 0px); transition: box-shadow .3s ease; }
+.pb-header.is-hidden { transform: none !important; }
 .pb-header.is-stuck { box-shadow: 0 6px 20px rgba(7,26,77,.08); }
 .pb-header-inner { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; padding-bottom: 10px; }
 .pb-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--pb-ink) !important; }

@@ -34,9 +34,20 @@ if(process.env.NODE_ENV === "production")
     const clientBuildPath = path.resolve(__dirname, "client", "build");
     const clientStaticPath = require("fs").existsSync(clientDistPath) ? clientDistPath : clientBuildPath;
 
-    app.use(express.static(clientStaticPath));
+    app.use(
+        express.static(clientStaticPath, {
+            maxAge: "1y",
+            immutable: true,
+            setHeaders: (res, filePath) => {
+                if (path.basename(filePath) === "index.html") {
+                    res.setHeader("Cache-Control", "no-cache");
+                }
+            },
+        })
+    );
   
     app.get("*", (req, res) => {
+        res.setHeader("Cache-Control", "no-cache");
         res.sendFile(path.resolve(clientStaticPath, "index.html"));
     });
 }
