@@ -194,8 +194,8 @@ const markBookingPaid = async (booking, paymentResult = {}) => {
   }
   if (!wasPaid) {
     await createTendaNotification(booking, {
-      action: "payment_confirmed",
-      detail: `Payment was confirmed with reference ${booking.paymentReference || referenceNumber(paymentResult) || "-"}.`,
+      action: "booking_success",
+      message: `Successful Tenda booking: ${summarizeTendaBooking(booking)}. Payment confirmed with reference ${booking.paymentReference || referenceNumber(paymentResult) || "-"}.`,
     });
   }
   return booking;
