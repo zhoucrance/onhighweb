@@ -158,7 +158,7 @@ const getPointOptions = (city, prefix, reverse = false) => {
   const stops = STOP_POINT_DETAILS[city] || [
     { name: `${city} main stop`, detail: "Central pickup point" },
   ];
-  return stops.map((point, index) => ({
+  return stops.slice(0, 2).map((point, index) => ({
     id: `${prefix}-${city.toLowerCase().replace(/\s+/g, "-")}-${index}`,
     ...point,
     offset: reverse ? index * -12 : index * 12,
@@ -705,7 +705,7 @@ function PbBookingSheet({
         window.sessionStorage.setItem("tendaPaymentReference", data.referenceNumber);
       }
       if (data.redirectUrl) {
-        setHint("Opening PesePay checkout. Complete payment to receive your ticket.");
+        setHint("");
         window.location.assign(data.redirectUrl);
       } else {
         setHint("PesePay request sent. Approve it on the customer phone to receive your ticket.");
@@ -1286,7 +1286,18 @@ function PbBookingSheet({
 
             {activeTab === "payment" && (
               <>
-                <div className="pb-sheet-panel-head">
+                {paymentStatus === "processing" || paymentStatus === "checking" ? (
+                  <div className="pb-pesepay-loader" role="status" aria-label="Opening PesePay">
+                    <div className="pb-loader-road" aria-hidden="true">
+                      <div className="pb-loader-bus">
+                        <span />
+                        <span />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                <>
+                  <div className="pb-sheet-panel-head">
                   <div>
                     <span className="pb-section-label">PesePay checkout</span>
                     <h3>Payment for Tenda</h3>
@@ -1356,6 +1367,8 @@ function PbBookingSheet({
                   <p className="pb-payment-success" role="status">
                     <SheetIcon name="check" size={17} /> Payment approved. Ticket generated.
                   </p>
+                )}
+                </>
                 )}
               </>
             )}
