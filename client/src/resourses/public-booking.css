@@ -1471,15 +1471,6 @@
   background: linear-gradient(90deg, #e9fbff 0 28%, #cceff8 28% 34%, #e9fbff 34% 62%, #cceff8 62% 68%, #e9fbff 68%);
 }
 
-.public-booking-page .pb-loader-bus::after {
-  content: "";
-  position: absolute;
-  right: -14px;
-  top: 29px;
-  border-left: 15px solid #0878aa;
-  border-top: 16px solid transparent;
-}
-
 .public-booking-page .pb-loader-bus span {
   position: absolute;
   bottom: -9px;

@@ -58,7 +58,7 @@ const popularRoutes = [
 
 const Icon = ({ name, size = 20 }) => {
   const paths = {
-    bus: <><rect x="3" y="4" width="18" height="14" rx="3"/><path d="M7 18v2m10-2v2M6 8h12M7 13h.01M17 13h.01"/></>,
+    bus: <><rect x="3" y="5" width="18" height="12" rx="2.5"/><path d="M3 10h18"/><circle cx="7.5" cy="17" r="1.6"/><circle cx="16.5" cy="17" r="1.6"/></>,
     pin: <><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></>,
     calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></>,
     swap: <><path d="m7 7-4 4 4 4M3 11h14M17 3l4 4-4 4M21 7H7"/></>,

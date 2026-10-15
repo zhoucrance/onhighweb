@@ -11,3 +11,7 @@ yarn-error.log*
 /test-results/
 /public_self_booking/research/
 /semantic-review/
+
+# Local dev server logs
+server.local.log
+server.local.err.log
