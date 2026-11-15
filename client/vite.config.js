@@ -29,6 +29,12 @@ module.exports = defineConfig({
     port: 3000,
     proxy: {
       "/api": "http://localhost:5000",
+      // Careers bot (interview practice API); in production nginx serves /careers-bot.
+      "/careers-bot": {
+        target: process.env.CAREERS_BOT_URL || "http://localhost:8000",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/careers-bot/, ""),
+      },
     },
   },
 });

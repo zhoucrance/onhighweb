@@ -10,6 +10,7 @@ const Home = lazy(() => import("./pages/Home"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 const PublicBusBooking = lazy(() => import("./pages/PublicBusBooking"));
+const PublicHome = lazy(() => import("./pages/PublicHome"));
 const PublicRoute = lazy(() => import("./components/PublicRoute"));
 const ProtectedRoute = lazy(() => import("./components/ProtectedRoute"));
 const AdminHome = lazy(() => import("./pages/Admin/AdminHome"));
@@ -48,7 +49,7 @@ function PermissionRoute({ children, permission, superAdminOnly = false }) {
 }
 
 function HomeGate() {
-  if (!localStorage.getItem("token")) return <PublicBusBooking />;
+  if (!localStorage.getItem("token")) return <PublicHome />;
   return (
     <ProtectedRoute>
       <Home />
@@ -188,6 +189,8 @@ function App() {
           />
           <Route path="/book-bus" element={<Navigate to="/" replace />} />
           <Route path="/tenda" element={<PublicBusBooking />} />
+          <Route path="/interviews" element={<PublicHome />} />
+          <Route path="/bus-booking" element={<PublicHome />} />
           <Route
             path="/register"
             element={
