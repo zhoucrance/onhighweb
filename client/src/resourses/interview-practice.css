@@ -1,4 +1,6 @@
-/* Interview practice (web flash cards). Same palette as the public booking page. */
+/* Interview practice (web flash cards) and the public home tabs.
+   Mobile first: the base rules are for phones; wider screens add to them
+   in the min-width blocks at the end. Same palette as the public booking page. */
 .ip-page,
 .ph-page {
   --ip-primary: #128fca;
@@ -13,6 +15,7 @@
   --ip-white: #ffffff;
   --ip-danger-bg: #fff4f2;
   --ip-danger: #a1321f;
+  --ip-tap: 44px; /* smallest comfortable touch target */
   color: var(--ip-ink);
   background: var(--ip-white);
 }
@@ -23,47 +26,56 @@
 .ip-page h1, .ip-page h2, .ip-page h3, .ip-page p { margin: 0; }
 .ip-page button, .ip-page input { font: inherit !important; }
 
-.ip-shell { width: min(880px, calc(100% - 32px)); margin-inline: auto; }
+.ip-shell { width: calc(100% - 32px); margin-inline: auto; }
 .ip-muted { color: var(--ip-muted); }
 .ip-small { font-size: 13px; }
 .ip-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-
 .ip-eyebrow { display: inline-block; color: var(--ip-primary); font-size: 12px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; }
 
-/* hero */
-.ip-hero { padding: 40px 0 32px; background: radial-gradient(circle at 15% 20%, rgba(18,143,202,.14), transparent 32%), linear-gradient(135deg, #fff 0%, #e9f7fc 100%); }
-.ip-hero h1 { margin-top: 10px; font-size: clamp(30px, 7vw, 46px); line-height: 1.08; letter-spacing: -1px; }
-.ip-hero p { margin-top: 12px; max-width: 560px; color: var(--ip-text); font-size: 17px; line-height: 1.6; }
-.ip-search { display: block; max-width: 560px; }
-.ip-search input { width: 100%; margin-top: 22px; padding: 14px 16px; border: 1px solid var(--ip-border); border-radius: 14px; background: var(--ip-white); color: var(--ip-ink); font-size: 16px; box-shadow: 0 8px 24px rgba(7,27,61,.06); }
+/* ---- home tabs (phone: two equal tabs across the screen) ---- */
+.ph-tabs { position: relative; z-index: 60; background: var(--ip-ink); padding-top: env(safe-area-inset-top, 0px); }
+.ph-tabs-inner { display: flex; align-items: center; gap: 8px; width: calc(100% - 16px); margin-inline: auto; min-height: 56px; }
+.ph-brand { display: none; color: var(--ip-white); font-weight: 800; letter-spacing: -.2px; white-space: nowrap; }
+.ph-brand small { color: var(--ip-accent); font-weight: 700; margin-left: 4px; }
+.ph-tablist { display: flex; flex: 1; gap: 4px; }
+.ph-tablist a { flex: 1; display: flex; align-items: center; justify-content: center; min-height: var(--ip-tap); padding: 8px 10px; border-radius: 10px; color: rgba(255,255,255,.75) !important; font-weight: 700; font-size: 14px; text-align: center; text-decoration: none !important; }
+.ph-tablist a:hover { color: var(--ip-white) !important; background: rgba(255,255,255,.08); }
+.ph-tablist a[aria-selected="true"] { color: var(--ip-ink) !important; background: var(--ip-white); }
+
+/* ---- hero ---- */
+.ip-hero { padding: 28px 0 24px; background: radial-gradient(circle at 15% 20%, rgba(18,143,202,.14), transparent 32%), linear-gradient(135deg, #fff 0%, #e9f7fc 100%); }
+.ip-hero h1 { margin-top: 8px; font-size: 30px; line-height: 1.1; letter-spacing: -.8px; }
+.ip-hero p { margin-top: 10px; color: var(--ip-text); font-size: 16px; line-height: 1.6; }
+.ip-search { display: block; }
+.ip-search input { width: 100%; min-height: 48px; margin-top: 18px; padding: 12px 14px; border: 1px solid var(--ip-border); border-radius: 14px; background: var(--ip-white); color: var(--ip-ink); font-size: 16px; /* 16px stops iOS zooming in */ box-shadow: 0 8px 24px rgba(7,27,61,.06); }
 .ip-search input:focus { outline: 3px solid rgba(18,143,202,.25); border-color: var(--ip-primary); }
 
-/* browse */
-.ip-browse { padding: 20px 0 48px; }
-.ip-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
-.ip-chips button { flex: 0 0 auto; padding: 8px 14px; border: 1px solid var(--ip-border); border-radius: 999px; background: var(--ip-white); color: var(--ip-text); font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+/* ---- browse: chips wrap onto new lines, no sideways scrolling ---- */
+.ip-browse { padding: 18px 0 40px; }
+.ip-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ip-chips button { min-height: 40px; padding: 8px 14px; border: 1px solid var(--ip-border); background: var(--ip-white); color: var(--ip-text); font-size: 14px; font-weight: 600; cursor: pointer; }
 .ip-chips button:hover { border-color: var(--ip-primary); color: var(--ip-primary); }
 .ip-chips button.is-active { background: var(--ip-primary); border-color: var(--ip-primary); color: var(--ip-white); }
-.ip-section-title { margin: 26px 0 14px; font-size: 20px; }
-.ip-topic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-.ip-topic { display: flex; flex-direction: column; gap: 6px; padding: 16px; text-align: left; border: 1px solid var(--ip-border); border-radius: 14px; background: var(--ip-white); color: var(--ip-ink); cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
-.ip-topic:hover { border-color: var(--ip-primary); box-shadow: 0 10px 24px rgba(7,27,61,.08); transform: translateY(-1px); }
+.ip-section-title { font-size: 19px; }
+.ip-topic-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.ip-topic { display: flex; flex-direction: column; gap: 6px; min-height: var(--ip-tap); padding: 14px 16px; text-align: left; border: 1px solid var(--ip-border); background: var(--ip-white); color: var(--ip-ink); cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
+.ip-topic:hover { border-color: var(--ip-primary); box-shadow: 0 10px 24px rgba(7,27,61,.08); }
 .ip-topic strong { font-size: 16px; }
 .ip-topic span { color: var(--ip-muted); font-size: 13px; }
 .ip-badge { display: inline-block; margin-right: 6px; padding: 1px 8px; border-radius: 999px; background: #e7f7ee; color: #17663a; font-size: 12px; font-style: normal; font-weight: 700; }
 
-/* study */
-.ip-study { padding: 24px 0 56px; }
-.ip-back { display: block; margin-bottom: 14px; }
-.ip-progress { height: 6px; margin-top: 10px; border-radius: 6px; background: var(--ip-surface); overflow: hidden; }
+/* ---- study: Previous / Next stay at the bottom of the screen ---- */
+.ip-study { padding: 18px 0 0; }
+.ip-back { display: flex; width: fit-content; align-items: center; min-height: var(--ip-tap); margin-bottom: 4px; }
+.ip-progress { height: 6px; margin-top: 8px; border-radius: 6px; background: var(--ip-surface); overflow: hidden; }
 .ip-progress span { display: block; height: 100%; border-radius: 6px; background: var(--ip-primary); transition: width .25s ease; }
 .ip-count { margin-top: 8px !important; color: var(--ip-muted); font-size: 14px; display: flex; gap: 8px; align-items: center; }
-.ip-card { margin-top: 16px; padding: 24px; border: 1px solid var(--ip-border); border-radius: 18px; background: var(--ip-white); box-shadow: 0 12px 30px rgba(7,27,61,.06); }
-.ip-card h2 { font-size: clamp(20px, 4.5vw, 26px); line-height: 1.35; }
-.ip-answer { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--ip-border); color: var(--ip-ink); font-size: 17px; line-height: 1.7; }
+.ip-card { margin-top: 14px; padding: 18px; border: 1px solid var(--ip-border); border-radius: 16px; background: var(--ip-white); box-shadow: 0 12px 30px rgba(7,27,61,.06); }
+.ip-card h2 { font-size: 20px; line-height: 1.4; }
+.ip-answer { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ip-border); color: var(--ip-ink); font-size: 16px; line-height: 1.7; }
 .ip-answer p + p { margin-top: 12px; }
 
-.ip-toggle { display: inline-flex; align-items: center; gap: 10px; margin-top: 20px; font-weight: 700; cursor: pointer; user-select: none; }
+.ip-toggle { display: inline-flex; align-items: center; gap: 10px; min-height: var(--ip-tap); margin-top: 14px; font-weight: 700; cursor: pointer; user-select: none; }
 .ip-toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .ip-toggle span { position: relative; width: 44px; height: 26px; border-radius: 26px; background: #c9d6df; transition: background .15s ease; }
 .ip-toggle span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--ip-white); box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .15s ease; }
@@ -71,69 +83,84 @@
 .ip-toggle input:checked + span::after { transform: translateX(18px); }
 .ip-toggle input:focus-visible + span { outline: 3px solid rgba(18,143,202,.35); outline-offset: 2px; }
 
-.ip-nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 18px; }
+.ip-nav { position: sticky; bottom: 0; z-index: 5; display: flex; gap: 10px; margin: 16px -16px 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); background: rgba(255,255,255,.96); border-top: 1px solid var(--ip-border); backdrop-filter: blur(8px); }
 .ip-nav .ip-btn { flex: 1; }
 
-/* buttons, forms */
-.ip-btn { display: inline-flex; justify-content: center; align-items: center; gap: 6px; padding: 13px 20px; border: 1px solid var(--ip-primary); border-radius: 12px; background: var(--ip-primary); color: var(--ip-white); font-weight: 700; cursor: pointer; transition: background .15s ease; }
+/* ---- buttons, links ---- */
+.ip-btn { display: inline-flex; justify-content: center; align-items: center; gap: 6px; min-height: 48px; padding: 12px 18px; border: 1px solid var(--ip-primary); background: var(--ip-primary); color: var(--ip-white); font-weight: 700; cursor: pointer; transition: background .15s ease; }
 .ip-btn:hover:not(:disabled) { background: var(--ip-primary-dark); border-color: var(--ip-primary-dark); }
 .ip-btn:disabled { opacity: .5; cursor: not-allowed; }
 .ip-btn--ghost { background: var(--ip-white); color: var(--ip-primary); }
 .ip-btn--ghost:hover:not(:disabled) { background: var(--ip-primary-light); color: var(--ip-primary-dark); }
-.ip-link { padding: 0; border: 0; background: none; color: var(--ip-primary); font-weight: 600; cursor: pointer; }
+.ip-link { min-height: var(--ip-tap); padding: 0; border: 0; background: none; color: var(--ip-primary); font-weight: 600; cursor: pointer; }
 .ip-link:hover { text-decoration: underline; }
 
-.ip-unlock { display: grid; gap: 14px; }
-.ip-panel { padding: 22px; border: 1px solid var(--ip-border); border-radius: 18px; background: var(--ip-white); }
-.ip-panel h2 { margin-top: 6px; font-size: 24px; }
+/* ---- unlock, sign-in, payment ---- */
+.ip-unlock { display: grid; gap: 12px; padding-bottom: 40px; }
+.ip-panel { padding: 18px; border: 1px solid var(--ip-border); border-radius: 16px; background: var(--ip-white); }
+.ip-panel h2 { margin-top: 6px; font-size: 22px; line-height: 1.25; }
 .ip-panel h3 { font-size: 18px; margin-bottom: 8px; }
 .ip-panel > p { margin-top: 8px; color: var(--ip-text); line-height: 1.6; }
-.ip-offer { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
-.ip-price { font-size: 26px; }
-.ip-price s { color: var(--ip-muted); font-size: 18px; }
-.ip-price strong { color: var(--ip-ink); font-size: 30px; }
-.ip-remaining { margin: 4px 0 0; padding-left: 26px; max-height: 320px; overflow-y: auto; color: var(--ip-text); line-height: 1.5; }
+.ip-offer { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+.ip-price s { color: var(--ip-muted); font-size: 17px; }
+.ip-price strong { color: var(--ip-ink); font-size: 28px; }
+.ip-remaining { margin: 4px 0 0; padding-left: 26px; max-height: 300px; overflow-y: auto; color: var(--ip-text); line-height: 1.5; }
 .ip-remaining li + li { margin-top: 8px; }
-.ip-check { display: flex; align-items: center; gap: 10px; font-weight: 600; cursor: pointer; }
-.ip-check input { width: 18px; height: 18px; accent-color: var(--ip-primary); }
-.ip-terms { margin: 14px 0 4px; padding: 14px; border-radius: 12px; background: var(--ip-surface); color: var(--ip-muted); font-size: 13px; line-height: 1.6; }
+.ip-check { display: flex; align-items: center; gap: 10px; min-height: var(--ip-tap); font-weight: 600; cursor: pointer; }
+.ip-check input { width: 20px; height: 20px; flex: 0 0 auto; accent-color: var(--ip-primary); }
+.ip-terms { margin: 10px 0 4px; padding: 14px; border-radius: 12px; background: var(--ip-surface); color: var(--ip-muted); font-size: 13px; line-height: 1.6; }
 .ip-terms p + p { margin-top: 8px; }
 .ip-panel > .ip-btn { margin-top: 16px; width: 100%; }
 
 .ip-form { display: grid; gap: 14px; }
 .ip-form label { display: grid; gap: 6px; font-weight: 600; }
-.ip-form input[type="tel"], .ip-form input[inputmode="numeric"] { padding: 12px 14px; border: 1px solid var(--ip-border); border-radius: 12px; font-size: 16px; }
+.ip-form input[type="tel"], .ip-form input[inputmode="numeric"] { width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid var(--ip-border); border-radius: 12px; font-size: 16px; }
 .ip-form input:focus { outline: 3px solid rgba(18,143,202,.25); border-color: var(--ip-primary); }
+.ip-form .ip-btn { width: 100%; }
 .ip-methods { display: grid; gap: 10px; margin: 0; padding: 0; border: 0; }
-.ip-methods label { display: flex; align-items: center; gap: 10px; padding: 14px; border: 1px solid var(--ip-border); border-radius: 12px; cursor: pointer; }
+.ip-methods label { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 12px 14px; border: 1px solid var(--ip-border); border-radius: 12px; cursor: pointer; }
 .ip-methods label.is-active { border-color: var(--ip-primary); background: var(--ip-primary-light); }
-.ip-methods input { accent-color: var(--ip-primary); }
+.ip-methods input { width: 20px; height: 20px; accent-color: var(--ip-primary); }
 
 .ip-notice { margin: 10px 0; padding: 12px 14px; border-radius: 12px; background: var(--ip-danger-bg); color: var(--ip-danger); line-height: 1.5; }
-.ip-notice a { color: var(--ip-danger); font-weight: 700; text-decoration: underline; }
-.ip-return { margin-top: 16px; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.ip-return { margin-top: 16px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 12px; align-items: center; }
 
-/* home tabs */
-.ph-tabs { position: relative; z-index: 60; background: var(--ip-ink); }
-.ph-tabs-inner { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: min(1180px, calc(100% - 32px)); margin-inline: auto; min-height: 52px; }
-.ph-brand { color: var(--ip-white); font-weight: 800; letter-spacing: -.2px; white-space: nowrap; }
-.ph-brand small { color: var(--ip-accent); font-weight: 700; margin-left: 4px; }
-.ph-tablist { display: flex; gap: 4px; }
-.ph-tablist a { padding: 8px 14px; border-radius: 10px; color: rgba(255,255,255,.75) !important; font-weight: 700; font-size: 14px; text-decoration: none !important; white-space: nowrap; }
-.ph-tablist a:hover { color: var(--ip-white) !important; background: rgba(255,255,255,.08); }
-.ph-tablist a[aria-selected="true"] { color: var(--ip-ink) !important; background: var(--ip-white); }
-
-@media (max-width: 480px) {
-  .ph-brand small { display: none; }
-  .ph-tablist a { padding: 8px 10px; font-size: 13px; }
-  .ip-card { padding: 18px; }
-  .ip-panel { padding: 18px; }
-}
-
-/* The site's global.css forces square buttons and blue links (with !important). */
+/* The site's global.css forces square buttons, blue links and h2 margins (with
+   !important / element selectors); win them back for these pages. */
 .ip-page .ip-chips button { border-radius: 999px !important; }
-.ip-page .ip-topic, .ip-page .ip-btn { border-radius: 12px !important; }
+.ip-page .ip-btn { border-radius: 12px !important; }
 .ip-page .ip-topic { border-radius: 14px !important; }
 .ip-page .ip-link { border-radius: 0 !important; }
-.ip-page .ip-section-title { margin: 26px 0 14px; }
-.ip-page .ip-notice a { color: var(--ip-danger) !important; text-decoration: underline !important; }
+.ip-page .ip-section-title { margin: 22px 0 12px; }
+.ip-page .ip-notice a { color: var(--ip-danger) !important; font-weight: 700; text-decoration: underline !important; }
+
+/* ---- tablets and up ---- */
+@media (min-width: 640px) {
+  .ip-shell { width: min(880px, calc(100% - 48px)); }
+  .ph-tabs-inner { width: min(1180px, calc(100% - 32px)); justify-content: space-between; gap: 12px; }
+  .ph-brand { display: block; }
+  .ph-tablist { flex: 0 0 auto; }
+  .ph-tablist a { flex: 0 0 auto; padding: 8px 14px; }
+  .ip-hero { padding: 40px 0 32px; }
+  .ip-hero h1 { font-size: 40px; letter-spacing: -1px; }
+  .ip-hero p { max-width: 560px; font-size: 17px; }
+  .ip-search { max-width: 560px; }
+  .ip-topic-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .ip-study { padding-top: 24px; }
+  .ip-card { padding: 24px; border-radius: 18px; }
+  .ip-card h2 { font-size: 24px; line-height: 1.35; }
+  .ip-answer { font-size: 17px; }
+  /* room to spare: the buttons sit under the card instead of a bottom bar */
+  .ip-nav { position: static; margin: 18px 0 56px; padding: 0; background: none; border: 0; backdrop-filter: none; }
+  .ip-panel { padding: 22px; border-radius: 18px; }
+  .ip-panel h2 { font-size: 24px; }
+  .ip-price strong { font-size: 30px; }
+  .ip-form .ip-btn { width: auto; justify-self: start; }
+  .ip-topic:hover { transform: translateY(-1px); }
+}
+
+/* ---- desktops ---- */
+@media (min-width: 960px) {
+  .ip-hero h1 { font-size: 46px; }
+  .ip-topic-grid { grid-template-columns: repeat(3, 1fr); }
+}
