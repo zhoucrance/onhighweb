@@ -164,3 +164,32 @@
   .ip-hero h1 { font-size: 46px; }
   .ip-topic-grid { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ---- first visit: WhatsApp or website ---- */
+.ph-choice { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px; background: radial-gradient(circle at 15% 20%, rgba(18,143,202,.14), transparent 35%), linear-gradient(160deg, #fff 0%, #e9f7fc 100%); }
+.ph-choice-card { width: 100%; max-width: 440px; display: grid; gap: 14px; }
+.ph-choice-card h1 { margin: 0; font-size: 28px; line-height: 1.15; letter-spacing: -.6px; color: var(--ip-ink); }
+.ph-choice-card p { margin: 0 0 6px; color: var(--ip-text); font-size: 16px; line-height: 1.55; }
+.ph-choice-wa, .ph-choice-web { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 64px; padding: 14px 18px; text-align: left; cursor: pointer; }
+.ph-choice-wa span, .ph-choice-web { flex-direction: column; align-items: flex-start; justify-content: center; }
+.ph-choice-wa span { display: flex; }
+.ph-choice strong { font-size: 17px; }
+.ph-choice small { font-size: 13px; opacity: .85; }
+.ph-page .ph-choice-wa { border-radius: 14px; background: #1ea952; color: #fff !important; box-shadow: 0 10px 24px rgba(30,169,82,.28); text-decoration: none !important; }
+.ph-page .ph-choice-wa:hover { background: #178a43; }
+.ph-page .ph-choice-web { gap: 2px; border: 1px solid var(--ip-border) !important; border-radius: 14px !important; background: var(--ip-white); color: var(--ip-ink); }
+.ph-page .ph-choice-web:hover { border-color: var(--ip-primary) !important; }
+
+/* WhatsApp shortcut in the tab bar */
+.ph-page .ph-wa-link { display: grid; place-items: center; flex: 0 0 auto; width: var(--ip-tap); height: var(--ip-tap); border-radius: 12px; background: #1ea952; color: #fff !important; }
+.ph-page .ph-wa-link:hover { background: #178a43; }
+
+@media (min-width: 640px) {
+  .ph-choice-card h1 { font-size: 34px; }
+  .ph-tabs-inner .ph-tablist { margin-left: auto; }
+}
+.ph-long { display: none; }
+@media (min-width: 640px) {
+  .ph-long { display: inline; }
+  .ph-short { display: none; }
+}

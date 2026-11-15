@@ -20,3 +20,21 @@ root.render(
 );
 
 reportWebVitals();
+
+// Save the site on the phone so later visits open without spending data
+// (see public/sw.js). Production builds only, so development stays live.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  // Files this visit fetched before the worker was running: hand them over
+  // so the worker saves them too (they come from the browser's cache, no data).
+  const handOverLoaded = () => {
+    const worker = navigator.serviceWorker.controller;
+    if (!worker) return;
+    const urls = performance.getEntriesByType("resource").map((entry) => entry.name);
+    worker.postMessage({ type: "save-loaded", urls });
+  };
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    if (navigator.serviceWorker.controller) handOverLoaded();
+    navigator.serviceWorker.addEventListener("controllerchange", handOverLoaded);
+  });
+}
