@@ -165,27 +165,30 @@
   .ip-topic-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
-/* ---- first visit: WhatsApp or website ---- */
-.ph-choice { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px; background: radial-gradient(circle at 15% 20%, rgba(18,143,202,.14), transparent 35%), linear-gradient(160deg, #fff 0%, #e9f7fc 100%); }
-.ph-choice-card { width: 100%; max-width: 440px; display: grid; gap: 14px; }
-.ph-choice-card h1 { margin: 0; font-size: 28px; line-height: 1.15; letter-spacing: -.6px; color: var(--ip-ink); }
-.ph-choice-card p { margin: 0 0 6px; color: var(--ip-text); font-size: 16px; line-height: 1.55; }
-.ph-choice-wa, .ph-choice-web { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 64px; padding: 14px 18px; text-align: left; cursor: pointer; }
-.ph-choice-wa span, .ph-choice-web { flex-direction: column; align-items: flex-start; justify-content: center; }
-.ph-choice-wa span { display: flex; }
-.ph-choice strong { font-size: 17px; }
-.ph-choice small { font-size: 13px; opacity: .85; }
-.ph-page .ph-choice-wa { border-radius: 14px; background: #1ea952; color: #fff !important; box-shadow: 0 10px 24px rgba(30,169,82,.28); text-decoration: none !important; }
-.ph-page .ph-choice-wa:hover { background: #178a43; }
-.ph-page .ph-choice-web { gap: 2px; border: 1px solid var(--ip-border) !important; border-radius: 14px !important; background: var(--ip-white); color: var(--ip-ink); }
-.ph-page .ph-choice-web:hover { border-color: var(--ip-primary) !important; }
+/* ---- first visit: the page shrinks back, the question sits in the middle ---- */
+.ph-behind { transform-origin: 50% 30vh; transition: transform .35s ease, filter .35s ease, opacity .35s ease; }
+.ph-page.is-asking { height: 100vh; height: 100dvh; overflow: hidden; background: #0b1f3a; }
+.ph-page.is-asking .ph-behind { transform: scale(.9); filter: blur(2px); opacity: .55; border-radius: 18px; overflow: hidden; pointer-events: none; }
+.ph-choice-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px; background: rgba(7,27,61,.35); animation: ph-fade .25s ease both; }
+.ph-choice { width: 100%; max-width: 360px; display: grid; gap: 12px; padding: 24px 20px 20px; border-radius: 20px; background: #fff; box-shadow: 0 24px 60px rgba(7,27,61,.35); text-align: center; animation: ph-pop .3s cubic-bezier(.2,.9,.3,1.2) both; }
+.ph-choice h2 { margin: 0 0 6px; font-size: 21px; line-height: 1.3; color: var(--ip-ink); }
+.ph-page .ph-choice-web, .ph-page .ph-choice-wa { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 52px; padding: 12px 16px; font-size: 16px; font-weight: 700; border-radius: 14px !important; cursor: pointer; }
+.ph-page .ph-choice-web { border: 0; background: var(--ip-primary); color: #fff; }
+.ph-page .ph-choice-web:hover { background: var(--ip-primary-dark); }
+.ph-page .ph-choice-web:focus-visible, .ph-page .ph-choice-wa:focus-visible { outline: 3px solid rgba(18,143,202,.4); outline-offset: 2px; }
+.ph-page .ph-choice-wa { border: 2px solid #1ea952; background: #fff; color: #138a40 !important; text-decoration: none !important; }
+.ph-page .ph-choice-wa:hover { background: #effaf3; }
+@keyframes ph-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ph-pop { from { opacity: 0; transform: scale(.92) translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .ph-behind, .ph-choice, .ph-choice-backdrop { transition: none; animation: none; }
+}
 
 /* WhatsApp shortcut in the tab bar */
 .ph-page .ph-wa-link { display: grid; place-items: center; flex: 0 0 auto; width: var(--ip-tap); height: var(--ip-tap); border-radius: 12px; background: #1ea952; color: #fff !important; }
 .ph-page .ph-wa-link:hover { background: #178a43; }
 
 @media (min-width: 640px) {
-  .ph-choice-card h1 { font-size: 34px; }
   .ph-tabs-inner .ph-tablist { margin-left: auto; }
 }
 .ph-long { display: none; }

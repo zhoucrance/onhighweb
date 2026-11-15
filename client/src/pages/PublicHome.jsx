@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useState } from "react";
+import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import Loader from "../components/Loader";
 import WhatsAppIcon from "../components/WhatsAppIcon";
@@ -7,9 +7,18 @@ import "../resourses/interview-practice.css";
 const InterviewPractice = lazy(() => import("./InterviewPractice"));
 const PublicBusBooking = lazy(() => import("./PublicBusBooking"));
 
-// The careers bot on WhatsApp; typing "interviews" there opens the practice Flow.
-const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || "263781576825";
-export const WHATSAPP_INTERVIEWS = `https://wa.me/${WHATSAPP_NUMBER}?text=interviews`;
+// OnHighTech Solutions on WhatsApp. Each solution can have its own number and
+// opening message (add new solutions here). Typing "interviews" to the careers
+// bot opens the interview practice Flow.
+const MAIN_WHATSAPP = import.meta.env.VITE_WHATSAPP_NUMBER || "263781576825";
+const SOLUTIONS = {
+  interviews: { whatsapp: MAIN_WHATSAPP, text: "interviews" },
+  bus: { whatsapp: import.meta.env.VITE_BUS_WHATSAPP_NUMBER || MAIN_WHATSAPP, text: "Hi" },
+};
+const whatsappLink = (tab) => {
+  const s = SOLUTIONS[tab] || SOLUTIONS.interviews;
+  return `https://wa.me/${s.whatsapp}?text=${encodeURIComponent(s.text)}`;
+};
 const CHOICE_KEY = "onhigh_channel_chosen";
 
 function choiceMade() {
@@ -28,24 +37,30 @@ function rememberChoice() {
   }
 }
 
-// First visit only: WhatsApp (works on WhatsApp bundles) or the website.
-function ChannelChoice({ onWeb }) {
+// First visit to the OnHighTech Solutions home page (any tab): a question in
+// the middle of the screen, the page shrunk behind it. WhatsApp works on
+// WhatsApp bundles; the website opens without data after this visit.
+// Whichever is tapped is remembered.
+function ChannelChoice({ onWeb, whatsapp }) {
+  const webButton = useRef(null);
+  useEffect(() => {
+    webButton.current?.focus();
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        rememberChoice();
+        onWeb();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onWeb]);
+
   return (
-    <section className="ph-choice" aria-labelledby="ph-choice-title">
-      <div className="ph-choice-card">
-        <span className="ip-eyebrow">Interview practice</span>
-        <h1 id="ph-choice-title">Where would you like to practise?</h1>
-        <p>Same questions and answers in both. Topics you unlock work in both too.</p>
-
-        <a className="ph-choice-wa" href={WHATSAPP_INTERVIEWS} onClick={rememberChoice}>
-          <WhatsAppIcon size={28} />
-          <span>
-            <strong>Continue on WhatsApp</strong>
-            <small>Uses your WhatsApp bundle</small>
-          </span>
-        </a>
-
+    <div className="ph-choice-backdrop">
+      <div className="ph-choice" role="dialog" aria-modal="true" aria-labelledby="ph-choice-title">
+        <h2 id="ph-choice-title">How would you like to continue?</h2>
         <button
+          ref={webButton}
           type="button"
           className="ph-choice-web"
           onClick={() => {
@@ -53,15 +68,19 @@ function ChannelChoice({ onWeb }) {
             onWeb();
           }}
         >
-          <strong>Continue on the website</strong>
-          <small>After this first visit it opens without data</small>
+          Continue using the website
         </button>
+        <a className="ph-choice-wa" href={whatsapp} onClick={rememberChoice}>
+          <WhatsAppIcon size={22} />
+          No data? Use WhatsApp
+        </a>
       </div>
-    </section>
+    </div>
   );
 }
 
-// Public landing page: Interview practice | Bus booking.
+// OnHighTech Solutions home page: one tab per solution (Interview practice,
+// Bus booking, more to come).
 //   /             -> Interviews (or Bus booking when coming back from a Tenda payment)
 //   /interviews   -> Interviews
 //   /bus-booking  -> Bus booking
@@ -72,18 +91,16 @@ export default function PublicHome() {
   const tendaReturn = params.get("paymentReturn") === "1";
   const tab = pathname.startsWith("/bus-booking") || (pathname === "/" && tendaReturn) ? "bus" : "interviews";
   // Coming back from a payment means they already chose the website.
-  const [chosen, setChosen] = useState(() => choiceMade() || params.get("interviewPayment") === "1");
-
-  if (tab === "interviews" && !chosen) {
-    return (
-      <div className="ph-page">
-        <ChannelChoice onWeb={() => setChosen(true)} />
-      </div>
-    );
-  }
+  const [chosen, setChosen] = useState(
+    () => choiceMade() || tendaReturn || params.get("interviewPayment") === "1"
+  );
+  const asking = !chosen;
+  const whatsapp = whatsappLink(tab);
 
   return (
-    <div className="ph-page">
+    <div className={`ph-page${asking ? " is-asking" : ""}`}>
+      {asking && <ChannelChoice onWeb={() => setChosen(true)} whatsapp={whatsapp} />}
+      <div className="ph-behind" inert={asking ? "" : undefined} aria-hidden={asking || undefined}>
       <nav className="ph-tabs" aria-label="Services">
         <div className="ph-tabs-inner">
           <span className="ph-brand">
@@ -98,16 +115,15 @@ export default function PublicHome() {
               Bus booking
             </Link>
           </div>
-          {tab === "interviews" && (
-            <a className="ph-wa-link" href={WHATSAPP_INTERVIEWS} aria-label="Practise on WhatsApp">
-              <WhatsAppIcon size={22} />
-            </a>
-          )}
+          <a className="ph-wa-link" href={whatsapp} aria-label="Continue on WhatsApp">
+            <WhatsAppIcon size={22} />
+          </a>
         </div>
       </nav>
       <Suspense fallback={<Loader />}>
         {tab === "bus" ? <PublicBusBooking /> : <InterviewPractice />}
       </Suspense>
+      </div>
     </div>
   );
 }
