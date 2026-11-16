@@ -7,18 +7,13 @@ import "../resourses/interview-practice.css";
 const InterviewPractice = lazy(() => import("./InterviewPractice"));
 const PublicBusBooking = lazy(() => import("./PublicBusBooking"));
 
-// OnHighTech Solutions on WhatsApp. Each solution can have its own number and
-// opening message (add new solutions here). Typing "interviews" to the careers
-// bot opens the interview practice Flow.
-const MAIN_WHATSAPP = import.meta.env.VITE_WHATSAPP_NUMBER || "263781576825";
-const SOLUTIONS = {
-  interviews: { whatsapp: MAIN_WHATSAPP, text: "interviews" },
-  bus: { whatsapp: import.meta.env.VITE_BUS_WHATSAPP_NUMBER || MAIN_WHATSAPP, text: "Hi" },
-};
-const whatsappLink = (tab) => {
-  const s = SOLUTIONS[tab] || SOLUTIONS.interviews;
-  return `https://wa.me/${s.whatsapp}?text=${encodeURIComponent(s.text)}`;
-};
+// OnHighTech Solutions on WhatsApp: one number for every solution (0781576825).
+// Never the bus booking bot. Typing "interviews" opens the interview practice
+// Flow; "Hi" opens the OnHighTech Solutions welcome.
+const WHATSAPP_NUMBER = "263781576825";
+const OPENING_TEXT = { interviews: "interviews" }; // other tabs: "Hi"
+const whatsappLink = (tab) =>
+  `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(OPENING_TEXT[tab] || "Hi")}`;
 const CHOICE_KEY = "onhigh_channel_chosen";
 
 function choiceMade() {
