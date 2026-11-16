@@ -11,6 +11,7 @@ const WHATSAPP_KEY = "onhigh_interview_whatsapp";
 const POLL_MS = 5000;
 const POLL_LIMIT = 36; // about 3 minutes of automatic checking
 const SUGGESTIONS = 7;
+const MIN_LOADING_MS = 900; // the "getting your questions ready" screen shows at least this long
 
 function readPending() {
   try {
@@ -91,7 +92,7 @@ function TopicButton({ t, i, onOpen }) {
       type="button"
       className="ip-topic"
       style={{ "--i": Math.min(i, 12) }}
-      onClick={() => onOpen(t.id, 0)}
+      onClick={() => onOpen(t.id, 0, t.name)}
     >
       <strong>{t.name}</strong>
       <span>
@@ -164,7 +165,7 @@ function Search({ popular, onOpen, onSeeAll }) {
       e.preventDefault();
       if (open && active >= 0 && items[active]) {
         setOpen(false);
-        onOpen(items[active].id, 0);
+        onOpen(items[active].id, 0, items[active].name);
       } else seeAll();
     } else if (e.key === "Escape") {
       setOpen(false);
@@ -208,7 +209,7 @@ function Search({ popular, onOpen, onSeeAll }) {
               onMouseEnter={() => setActive(i)}
               onClick={() => {
                 setOpen(false);
-                onOpen(t.id, 0);
+                onOpen(t.id, 0, t.name);
               }}
             >
               <strong>
@@ -691,6 +692,30 @@ function Unlock({ topic, firstLocked, onSignedIn, onPaid }) {
   );
 }
 
+/* ---------------- loading a topic ---------------- */
+
+function CardLoading({ name }) {
+  return (
+    <div className="ip-shell ip-study ip-loading" role="status" aria-live="polite">
+      <span className="ip-eyebrow">{name || "Interview practice"}</span>
+      <div className="ip-progress" aria-hidden="true">
+        <span className="ip-progress-run" />
+      </div>
+      <p className="ip-count">Getting your questions ready…</p>
+      <div className="ip-card ip-card-skeleton" aria-hidden="true">
+        <span className="ip-bone ip-bone--title" />
+        <span className="ip-bone ip-bone--title ip-bone--short" />
+        <span className="ip-bone ip-bone--toggle" />
+      </div>
+      <div className="ip-dots" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- card ---------------- */
 
 function Card({ topic, index, setIndex, onSignedIn, onPaid, onBack }) {
@@ -730,7 +755,7 @@ function Card({ topic, index, setIndex, onSignedIn, onPaid, onBack }) {
         {topic.paid && <em className="ip-badge">✓ Unlocked</em>}
       </p>
 
-      <article className="ip-card">
+      <article className="ip-card" key={index}>
         <h2>{card.question}</h2>
         <label className="ip-toggle">
           <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} />
@@ -771,22 +796,26 @@ export default function InterviewPractice() {
   const [signedIn, setSignedIn] = useState(Boolean(getToken()));
   const [topic, setTopic] = useState(null);
   const [index, setIndex] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(null); // {name} while a topic is opening
   const [error, setError] = useState(null);
   const [returning, setReturning] = useState("");
 
-  const open = useCallback(async (id, at = 0) => {
-    setLoading(true);
+  const open = useCallback(async (id, at = 0, name = "") => {
+    setLoading({ name });
     setError(null);
+    window.scrollTo({ top: 0 });
+    const started = Date.now();
     try {
       const t = await interviewApi.topic(id);
+      // a short, steady loading moment instead of a flash
+      const wait = MIN_LOADING_MS - (Date.now() - started);
+      if (wait > 0) await new Promise((done) => window.setTimeout(done, wait));
       setTopic(t);
       setIndex(Math.min(at, t.cards.length - 1));
-      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       setError(err);
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   }, []);
 
@@ -799,7 +828,7 @@ export default function InterviewPractice() {
   const onPaid = useCallback(async () => {
     if (!topic) return;
     const at = firstLockedOf(topic);
-    await open(topic.id, at);
+    await open(topic.id, at, topic.name);
   }, [topic, open]);
 
   // Back from Pesepay's card checkout.
@@ -859,8 +888,9 @@ export default function InterviewPractice() {
           <Notice error={error} />
         </div>
       )}
-      {loading && <p className="ip-shell ip-muted">Loading…</p>}
-      {topic ? (
+      {loading ? (
+        <CardLoading name={loading.name} />
+      ) : topic ? (
         <Card
           topic={topic}
           index={index}

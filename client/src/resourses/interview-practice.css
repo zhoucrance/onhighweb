@@ -255,3 +255,25 @@
   .ip-suggest, .ip-area, .ip-area.is-closing, .ip-area .ip-topic, .ip-chips { animation: none; transition: none; }
 }
 @media (min-width: 640px) { .ip-stack { scroll-margin-top: 76px; } }
+
+/* ---- opening a topic: a short loading moment ---- */
+.ip-loading { animation: ip-fade-in .2s ease both; }
+.ip-progress .ip-progress-run { width: 40%; animation: ip-run 1s ease-in-out infinite; }
+.ip-card-skeleton { display: grid; gap: 12px; min-height: 180px; }
+.ip-bone { display: block; height: 18px; border-radius: 8px; background: linear-gradient(90deg, var(--ip-surface) 25%, #e3eef5 50%, var(--ip-surface) 75%); background-size: 200% 100%; animation: ip-shimmer 1.2s linear infinite; }
+.ip-bone--title { height: 24px; }
+.ip-bone--short { width: 62%; }
+.ip-bone--toggle { width: 140px; height: 28px; margin-top: 14px; border-radius: 999px; }
+.ip-dots { display: flex; justify-content: center; gap: 8px; margin-top: 22px; }
+.ip-dots span { width: 9px; height: 9px; border-radius: 50%; background: var(--ip-primary); animation: ip-bounce .9s ease-in-out infinite; }
+.ip-dots span:nth-child(2) { animation-delay: .15s; }
+.ip-dots span:nth-child(3) { animation-delay: .3s; }
+.ip-study:not(.ip-loading) .ip-card { animation: ip-card-in .35s cubic-bezier(.2,.9,.3,1.1) both; }
+@keyframes ip-run { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+@keyframes ip-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes ip-bounce { 0%, 80%, 100% { transform: scale(.6); opacity: .4; } 40% { transform: scale(1); opacity: 1; } }
+@keyframes ip-card-in { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes ip-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .ip-loading, .ip-progress-run, .ip-bone, .ip-dots span, .ip-study .ip-card { animation: none; }
+}
