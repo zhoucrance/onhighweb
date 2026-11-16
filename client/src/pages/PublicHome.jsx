@@ -79,6 +79,20 @@ function ChannelChoice({ onWeb, whatsapp }) {
   );
 }
 
+// Bus booking tab is not live yet. When ready: delete BusComingSoon below and
+// swap the commented line back in where the tabs are rendered (search "BUS LIVE").
+function BusComingSoon() {
+  return (
+    <section className="ph-soon">
+      <span className="ph-soon-icon" aria-hidden="true">🚌</span>
+      <span className="ip-eyebrow">Bus booking</span>
+      <h1>Coming soon</h1>
+      <p>Book your bus seat online, right here. We are getting it ready for you.</p>
+      <Link to="/interviews" className="ip-btn">Practise interview questions</Link>
+    </section>
+  );
+}
+
 // OnHighTech Solutions home page: one tab per solution (Interview practice,
 // Bus booking, more to come).
 //   /             -> Interviews (or Bus booking when coming back from a Tenda payment)
@@ -123,7 +137,13 @@ export default function PublicHome() {
         </div>
       </nav>
       <Suspense fallback={<Loader />}>
-        {tab === "bus" ? <PublicBusBooking /> : <InterviewPractice key={`${pathname}-${homeVisit}`} />}
+        {tab === "bus" ? (
+          // BUS LIVE: replace the next line with  <PublicBusBooking />
+          // (a Tenda payment return still needs the real page to confirm the ticket)
+          tendaReturn ? <PublicBusBooking /> : <BusComingSoon />
+        ) : (
+          <InterviewPractice key={`${pathname}-${homeVisit}`} />
+        )}
       </Suspense>
       </div>
     </div>

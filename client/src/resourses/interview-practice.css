@@ -219,3 +219,12 @@
 @media (prefers-reduced-motion: reduce) {
   .ip-panel, .ip-panel.is-closing, .ip-panel .ip-topic, .ip-chips button.is-active { animation: none; }
 }
+
+/* Bus booking "coming soon" (until the tab goes live) */
+.ph-soon { display: grid; justify-items: center; gap: 10px; max-width: 460px; margin: 0 auto; padding: 56px 20px 64px; text-align: center; }
+.ph-soon-icon { display: grid; place-items: center; width: 76px; height: 76px; border-radius: 50%; background: var(--ip-primary-light); font-size: 38px; animation: ph-soon-bob 2.4s ease-in-out infinite; }
+.ph-soon h1 { margin: 0; font-size: 30px; letter-spacing: -.6px; color: var(--ip-ink); }
+.ph-soon p { margin: 0 0 8px; color: var(--ip-text); font-size: 16px; line-height: 1.6; }
+.ph-soon .ip-btn { color: var(--ip-white) !important; text-decoration: none !important; }
+@keyframes ph-soon-bob { 50% { transform: translateY(-5px); } }
+@media (prefers-reduced-motion: reduce) { .ph-soon-icon { animation: none; } }
