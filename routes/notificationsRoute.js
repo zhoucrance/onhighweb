@@ -4,6 +4,8 @@ const Notification = require("../models/notificationModel");
 const Trip = require("../models/tripModel");
 const { serializeAuthUser } = require("../middlewares/authorizationMiddleware");
 const { notificationScopeForUser } = require("../utils/auditNotifications");
+const crypto = require("crypto");
+const InterviewPayment = require("../models/interviewPaymentModel");
 
 const canSeeNotifications = (user) => {
   const authUser = serializeAuthUser(user);
@@ -150,6 +152,105 @@ router.post("/mark-read", authMiddleware, async (req, res) => {
 
     await Notification.updateMany(query, { $addToSet: { readBy: req.user._id } });
     res.send({ success: true, message: "Notifications marked as read" });
+  } catch (error) {
+    res.status(500).send({ success: false, message: error.message });
+  }
+});
+
+// ---- Interview practice payments (sent by the careers bot) ----
+// POST /api/notifications/interview-payment, header X-Interview-Secret.
+// Records each payment once (by reference) and notifies the super admins with
+// the amount, time, phone (if any), WhatsApp or website, and the total so far.
+
+const sameSecret = (given) => {
+  const expected = String(process.env.INTERVIEW_NOTIFY_SECRET || "");
+  const a = Buffer.from(String(given || ""));
+  const b = Buffer.from(expected);
+  return expected.length > 0 && a.length === b.length && crypto.timingSafeEqual(a, b);
+};
+
+const money = (amount, currency = "USD") =>
+  currency === "USD" ? `$${Number(amount).toFixed(2)}` : `${Number(amount).toFixed(2)} ${currency}`;
+
+const readableTime = (date) =>
+  date.toLocaleString("en-GB", {
+    timeZone: "Africa/Harare",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+const readablePhone = (phone) => {
+  const digits = String(phone || "").replace(/[^0-9]/g, "");
+  if (digits.length === 12 && digits.startsWith("263")) {
+    return `+263 ${digits.slice(3, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
+  }
+  return digits ? `+${digits}` : "";
+};
+
+router.post("/interview-payment", async (req, res) => {
+  try {
+    if (!sameSecret(req.get("X-Interview-Secret"))) {
+      return res.status(401).send({ success: false, message: "Not allowed" });
+    }
+    const body = req.body || {};
+    const amount = Number(body.amount);
+    const source = ["whatsapp", "website"].includes(body.source) ? body.source : "";
+    if (!body.reference || !Number.isFinite(amount) || amount <= 0 || !source) {
+      return res.status(400).send({ success: false, message: "reference, amount and source are required" });
+    }
+
+    const reference = String(body.reference);
+    if (await InterviewPayment.exists({ reference })) {
+      return res.send({ success: true, message: "Already recorded" }); // the bot sent it again
+    }
+    const paidAt = body.paid_at ? new Date(body.paid_at) : new Date();
+    let payment;
+    try {
+      payment = await InterviewPayment.create({
+        reference,
+        amount,
+        currency: body.currency || "USD",
+        topic: String(body.topic || ""),
+        source,
+        method: String(body.method || ""),
+        phone: String(body.phone || ""),
+        paidAt: Number.isNaN(paidAt.getTime()) ? new Date() : paidAt,
+      });
+    } catch (error) {
+      if (error.code === 11000) return res.send({ success: true, message: "Already recorded" });
+      throw error;
+    }
+
+    const [totals] = await InterviewPayment.aggregate([
+      { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } },
+    ]);
+    const where = payment.source === "website" ? "website (onhighweb)" : "WhatsApp";
+    const details = [
+      readableTime(payment.paidAt),
+      readablePhone(payment.phone) || "no phone number",
+      payment.method === "ecocash" ? "EcoCash" : payment.method === "card" ? "card" : "",
+    ].filter(Boolean);
+    const message =
+      `💰 Interview payment: ${money(payment.amount, payment.currency)} via ${where}` +
+      `${payment.topic ? ` for ${payment.topic}` : ""} · ${details.join(" · ")}. ` +
+      `Total so far: ${money(totals.total, payment.currency)} ` +
+      `(${totals.count} ${totals.count === 1 ? "payment" : "payments"}).`;
+
+    await Notification.create({
+      companyId: null, // OnHighTech's own sales: shown to super admins
+      actor: null,
+      actorName: "Interview practice",
+      module: "interview payments",
+      action: "payment_made",
+      entityType: "interview payment",
+      entityId: payment._id,
+      entityLabel: `${payment.source} -> ${payment.reference}`,
+      message,
+    });
+    res.send({ success: true, message: "Recorded", total: totals.total, count: totals.count });
   } catch (error) {
     res.status(500).send({ success: false, message: error.message });
   }
