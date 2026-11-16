@@ -196,3 +196,23 @@
   .ph-long { display: inline; }
   .ph-short { display: none; }
 }
+
+/* Area panel: tapping an area chip pops its topics up under the chips; ✕ closes it. */
+.ip-panel { margin-top: 14px; padding: 14px; border: 1px solid var(--ip-border); border-radius: 16px; background: var(--ip-surface); box-shadow: 0 14px 34px rgba(7,27,61,.10); transform-origin: top center; animation: ip-panel-in .26s cubic-bezier(.2,.9,.3,1.2) both; scroll-margin-top: 12px; }
+.ip-panel.is-closing { animation: ip-panel-out .18s ease-in both; }
+.ip-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.ip-panel-head .ip-section-title { margin: 0 !important; }
+.ip-panel-head .ip-muted { font-size: 13px; }
+.ip-panel-close { flex: none; display: inline-flex; align-items: center; justify-content: center; width: var(--ip-tap); height: var(--ip-tap); border: 1px solid var(--ip-border) !important; border-radius: 50% !important; background: var(--ip-white); color: var(--ip-ink); font-size: 18px; line-height: 1; cursor: pointer; transition: background .15s ease, transform .15s ease; }
+.ip-panel-close:hover { background: var(--ip-primary-light); transform: rotate(90deg); }
+.ip-panel .ip-topic { animation: ip-topic-in .28s ease-out both; animation-delay: calc(var(--i, 0) * 30ms + 80ms); }
+.ip-chips button { transition: background .15s ease, color .15s ease, border-color .15s ease, transform .15s ease; }
+.ip-chips button:active { transform: scale(.95); }
+.ip-chips button.is-active { animation: ip-chip-pick .25s ease-out; }
+@keyframes ip-panel-in { from { opacity: 0; transform: translateY(-10px) scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes ip-panel-out { to { opacity: 0; transform: translateY(-8px) scale(.95); } }
+@keyframes ip-topic-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes ip-chip-pick { 50% { transform: scale(1.08); } }
+@media (prefers-reduced-motion: reduce) {
+  .ip-panel, .ip-panel.is-closing, .ip-panel .ip-topic, .ip-chips button.is-active { animation: none; }
+}

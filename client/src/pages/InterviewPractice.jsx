@@ -70,6 +70,9 @@ function Browse({ signedIn, onOpen }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hasMine, setHasMine] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const panelRef = useRef(null);
+  const chipsRef = useRef(null);
 
   useEffect(() => {
     interviewApi.sectors().then((d) => setSectors(d.sectors)).catch(setError);
@@ -84,6 +87,7 @@ function Browse({ signedIn, onOpen }) {
   useEffect(() => {
     const q = query.trim();
     setLoading(true);
+    if (!q) setTopics([]); // a new area: don't show the last area's topics in its panel
     const timer = window.setTimeout(
       () => {
         interviewApi
@@ -108,6 +112,60 @@ function Browse({ signedIn, onOpen }) {
     ? sectors.find((s) => s.id === sector)?.name || "Topics"
     : "Popular to start with";
 
+  // An area chip opens its topics in a panel that pops up under the chips;
+  // ✕ (or tapping the chip again) closes it and the chips are all in view again.
+  const inPanel = Boolean(sector) && !query.trim();
+  const closePanel = () => {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(() => {
+      setSector("");
+      setClosing(false);
+      chipsRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 180);
+  };
+  const pickSector = (id) => {
+    setQuery("");
+    if (id === sector && !query.trim()) closePanel();
+    else {
+      setClosing(false);
+      setSector(id);
+    }
+  };
+
+  useEffect(() => {
+    if (inPanel) panelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [sector, inPanel]);
+
+  const topicList = (
+    <>
+      <Notice error={error} />
+      {loading && !topics.length ? (
+        <p className="ip-muted">Loading topics…</p>
+      ) : !topics.length ? (
+        <p className="ip-muted">No topics found. Try another word.</p>
+      ) : (
+        <div className="ip-topic-grid">
+          {topics.map((t, i) => (
+            <button
+              key={t.id}
+              type="button"
+              className="ip-topic"
+              style={{ "--i": Math.min(i, 12) }}
+              onClick={() => onOpen(t.id, 0)}
+            >
+              <strong>{t.name}</strong>
+              <span>
+                {t.paid ? <em className="ip-badge">✓ Unlocked</em> : null}
+                {t.count} questions{t.sector ? ` · ${t.sector}` : ""}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
+
   return (
     <>
       <section className="ip-hero">
@@ -128,7 +186,7 @@ function Browse({ signedIn, onOpen }) {
       </section>
 
       <section className="ip-shell ip-browse">
-        <div className="ip-chips" role="tablist" aria-label="Areas">
+        <div className="ip-chips" ref={chipsRef} role="tablist" aria-label="Areas">
           <button
             type="button"
             className={!sector && !query ? "is-active" : ""}
@@ -143,10 +201,7 @@ function Browse({ signedIn, onOpen }) {
             <button
               type="button"
               className={sector === "mine" ? "is-active" : ""}
-              onClick={() => {
-                setSector("mine");
-                setQuery("");
-              }}
+              onClick={() => pickSector("mine")}
             >
               ⭐ My topics
             </button>
@@ -156,34 +211,39 @@ function Browse({ signedIn, onOpen }) {
               key={s.id}
               type="button"
               className={sector === s.id && !query ? "is-active" : ""}
-              onClick={() => {
-                setSector(s.id);
-                setQuery("");
-              }}
+              onClick={() => pickSector(s.id)}
             >
               {s.name}
             </button>
           ))}
         </div>
 
-        <h2 className="ip-section-title">{heading}</h2>
-        <Notice error={error} />
-        {loading && !topics.length ? (
-          <p className="ip-muted">Loading topics…</p>
-        ) : !topics.length ? (
-          <p className="ip-muted">No topics found. Try another word.</p>
-        ) : (
-          <div className="ip-topic-grid">
-            {topics.map((t) => (
-              <button key={t.id} type="button" className="ip-topic" onClick={() => onOpen(t.id, 0)}>
-                <strong>{t.name}</strong>
-                <span>
-                  {t.paid ? <em className="ip-badge">✓ Unlocked</em> : null}
-                  {t.count} questions{t.sector ? ` · ${t.sector}` : ""}
-                </span>
+        {inPanel ? (
+          <div
+            key={sector}
+            ref={panelRef}
+            className={`ip-panel${closing ? " is-closing" : ""}`}
+            role="region"
+            aria-labelledby="ip-panel-title"
+          >
+            <div className="ip-panel-head">
+              <div>
+                <h2 id="ip-panel-title" className="ip-section-title">{heading}</h2>
+                {!loading && topics.length ? (
+                  <span className="ip-muted">{topics.length} topics</span>
+                ) : null}
+              </div>
+              <button type="button" className="ip-panel-close" onClick={closePanel} aria-label="Close and go back to areas">
+                ✕
               </button>
-            ))}
+            </div>
+            {topicList}
           </div>
+        ) : (
+          <>
+            <h2 className="ip-section-title">{heading}</h2>
+            {topicList}
+          </>
         )}
       </section>
     </>
