@@ -33,7 +33,7 @@
 .ip-eyebrow { display: inline-block; color: var(--ip-primary); font-size: 12px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; }
 
 /* ---- home tabs (phone: two equal tabs across the screen) ---- */
-.ph-tabs { position: relative; z-index: 60; background: var(--ip-ink); padding-top: env(safe-area-inset-top, 0px); }
+.ph-tabs { position: sticky; top: 0; z-index: 60; box-shadow: 0 2px 10px rgba(7,27,61,.18); background: var(--ip-ink); padding-top: env(safe-area-inset-top, 0px); }
 /* phone: row 1 = logo + WhatsApp, row 2 = the tabs at full width (never squeezed together) */
 .ph-tabs-inner { display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; width: calc(100% - 24px); margin-inline: auto; padding-bottom: 8px; }
 .ph-page .ph-brand { display: flex; align-items: center; flex: 1 1 auto; min-width: 0; min-height: 56px; color: var(--ip-white) !important; font-size: 18px; font-weight: 800; letter-spacing: -.2px; white-space: nowrap; text-decoration: none !important; }
@@ -201,7 +201,7 @@
 }
 
 /* Area panel: tapping an area chip pops its topics up under the chips; ✕ closes it. */
-.ip-panel { margin-top: 14px; padding: 14px; border: 1px solid var(--ip-border); border-radius: 16px; background: var(--ip-surface); box-shadow: 0 14px 34px rgba(7,27,61,.10); transform-origin: top center; animation: ip-panel-in .26s cubic-bezier(.2,.9,.3,1.2) both; scroll-margin-top: 12px; }
+.ip-panel { margin-top: 14px; padding: 14px; border: 1px solid var(--ip-border); border-radius: 16px; background: var(--ip-surface); box-shadow: 0 14px 34px rgba(7,27,61,.10); transform-origin: top center; animation: ip-panel-in .26s cubic-bezier(.2,.9,.3,1.2) both; scroll-margin-top: 130px; }
 .ip-panel.is-closing { animation: ip-panel-out .18s ease-in both; }
 .ip-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .ip-panel-head .ip-section-title { margin: 0 !important; }
@@ -228,3 +228,6 @@
 .ph-soon .ip-btn { color: var(--ip-white) !important; text-decoration: none !important; }
 @keyframes ph-soon-bob { 50% { transform: translateY(-5px); } }
 @media (prefers-reduced-motion: reduce) { .ph-soon-icon { animation: none; } }
+/* the header stays on top while scrolling, so scrolled-to content lands below it */
+.ip-chips { scroll-margin-top: 130px; }
+@media (min-width: 640px) { .ip-chips, .ip-panel { scroll-margin-top: 76px; } }
