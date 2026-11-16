@@ -34,12 +34,14 @@
 
 /* ---- home tabs (phone: two equal tabs across the screen) ---- */
 .ph-tabs { position: relative; z-index: 60; background: var(--ip-ink); padding-top: env(safe-area-inset-top, 0px); }
-.ph-tabs-inner { display: flex; align-items: center; gap: 8px; width: calc(100% - 16px); margin-inline: auto; min-height: 56px; }
-.ph-brand { display: none; color: var(--ip-white); font-weight: 800; letter-spacing: -.2px; white-space: nowrap; }
-.ph-brand small { color: var(--ip-accent); font-weight: 700; margin-left: 4px; }
-.ph-tablist { display: flex; flex: 1; gap: 4px; }
-.ph-tablist a { flex: 1; display: flex; align-items: center; justify-content: center; min-height: var(--ip-tap); padding: 8px 10px; border-radius: 10px; color: rgba(255,255,255,.75) !important; font-weight: 700; font-size: 14px; text-align: center; text-decoration: none !important; }
-.ph-tablist a:hover { color: var(--ip-white) !important; background: rgba(255,255,255,.08); }
+/* phone: row 1 = logo + WhatsApp, row 2 = the tabs at full width (never squeezed together) */
+.ph-tabs-inner { display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; width: calc(100% - 24px); margin-inline: auto; padding-bottom: 8px; }
+.ph-page .ph-brand { display: flex; align-items: center; flex: 1 1 auto; min-width: 0; min-height: 56px; color: var(--ip-white) !important; font-size: 18px; font-weight: 800; letter-spacing: -.2px; white-space: nowrap; text-decoration: none !important; }
+.ph-page .ph-brand:hover { color: var(--ip-white) !important; opacity: .9; }
+.ph-brand small { color: var(--ip-accent); font-size: 14px; font-weight: 700; margin-left: 5px; }
+.ph-tablist { display: flex; order: 3; flex: 1 0 100%; gap: 4px; padding: 4px; border-radius: 12px; background: rgba(255,255,255,.06); }
+.ph-tablist a { flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: center; min-height: var(--ip-tap); padding: 8px 10px; border-radius: 10px; color: rgba(255,255,255,.75) !important; font-weight: 700; font-size: 14px; text-align: center; text-decoration: none !important; }
+.ph-tablist a:not([aria-selected="true"]):hover { color: var(--ip-white) !important; background: rgba(255,255,255,.08); }
 .ph-tablist a[aria-selected="true"] { color: var(--ip-ink) !important; background: var(--ip-white); }
 
 /* ---- hero ---- */
@@ -138,8 +140,9 @@
 @media (min-width: 640px) {
   .ip-shell { width: min(880px, calc(100% - 48px)); }
   .ph-tabs-inner { width: min(1180px, calc(100% - 32px)); justify-content: space-between; gap: 12px; }
-  .ph-brand { display: block; }
-  .ph-tablist { flex: 0 0 auto; }
+  .ph-tabs-inner { flex-wrap: nowrap; min-height: 60px; padding-bottom: 0; }
+  .ph-page .ph-brand { flex: 0 0 auto; min-height: 0; }
+  .ph-tablist { order: 0; flex: 0 0 auto; padding: 0; background: none; }
   .ph-tablist a { flex: 0 0 auto; padding: 8px 14px; }
   .ip-hero { padding: 40px 0 32px; }
   .ip-hero h1 { font-size: 40px; letter-spacing: -1px; }

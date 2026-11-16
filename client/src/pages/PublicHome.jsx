@@ -95,6 +95,8 @@ export default function PublicHome() {
     () => choiceMade() || tendaReturn || params.get("interviewPayment") === "1"
   );
   const asking = !chosen;
+  // Tapping the logo always lands on a fresh home page (closes an open topic too).
+  const [homeVisit, setHomeVisit] = useState(0);
   const whatsapp = whatsappLink(tab);
 
   return (
@@ -103,9 +105,9 @@ export default function PublicHome() {
       <div className="ph-behind" inert={asking ? "" : undefined} aria-hidden={asking || undefined}>
       <nav className="ph-tabs" aria-label="Services">
         <div className="ph-tabs-inner">
-          <span className="ph-brand">
+          <Link to="/" className="ph-brand" onClick={() => setHomeVisit((n) => n + 1)} aria-label="OnHighTech Solutions home">
             OnHighTech<small>Solutions</small>
-          </span>
+          </Link>
           <div className="ph-tablist" role="tablist">
             <Link to="/interviews" role="tab" aria-selected={tab === "interviews"}>
               <span className="ph-long">Interview practice</span>
@@ -121,7 +123,7 @@ export default function PublicHome() {
         </div>
       </nav>
       <Suspense fallback={<Loader />}>
-        {tab === "bus" ? <PublicBusBooking /> : <InterviewPractice />}
+        {tab === "bus" ? <PublicBusBooking /> : <InterviewPractice key={`${pathname}-${homeVisit}`} />}
       </Suspense>
       </div>
     </div>
