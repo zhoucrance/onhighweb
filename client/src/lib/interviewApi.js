@@ -69,8 +69,8 @@ export const interviewApi = {
     request(`/topics?sector=${encodeURIComponent(sector)}&q=${encodeURIComponent(q)}`),
   topic: (id) => request(`/topics/${encodeURIComponent(id)}`),
   me: () => request("/me"),
-  sendCode: (phone) => request("/auth/code", { method: "POST", body: { phone } }),
-  verifyCode: (phone, code) => request("/auth/verify", { method: "POST", body: { phone, code } }),
+  // This browser's id (no code) plus an optional WhatsApp number to unlock too.
+  device: (whatsapp = "") => request("/auth/device", { method: "POST", body: { whatsapp } }),
   pay: (body) => request("/pay", { method: "POST", body }),
   paymentStatus: (id) => request(`/pay/${encodeURIComponent(id)}`),
 };

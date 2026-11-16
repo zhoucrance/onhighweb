@@ -3,12 +3,14 @@ import { ApiError, getToken, interviewApi, setToken } from "../lib/interviewApi"
 import "../resourses/interview-practice.css";
 
 // Interview flash cards for the website: the same content, free preview and
-// per-topic Pesepay payment as the WhatsApp Flow (one purchase works in both).
-// Views: browse -> card -> unlock -> sign in -> pay -> wait -> card (unlocked).
+// per-topic Pesepay payment as the WhatsApp Flow.
+// Views: browse -> card -> unlock -> (optional WhatsApp number) -> pay -> card (unlocked).
 
 const PENDING_KEY = "onhigh_interview_payment";
+const WHATSAPP_KEY = "onhigh_interview_whatsapp";
 const POLL_MS = 5000;
 const POLL_LIMIT = 36; // about 3 minutes of automatic checking
+const SUGGESTIONS = 7;
 
 function readPending() {
   try {
@@ -22,6 +24,23 @@ function writePending(value) {
   try {
     if (value) window.sessionStorage.setItem(PENDING_KEY, JSON.stringify(value));
     else window.sessionStorage.removeItem(PENDING_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function savedWhatsApp() {
+  try {
+    return window.localStorage.getItem(WHATSAPP_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function saveWhatsApp(value) {
+  try {
+    if (value) window.localStorage.setItem(WHATSAPP_KEY, value);
+    else window.localStorage.removeItem(WHATSAPP_KEY);
   } catch {
     /* ignore */
   }
@@ -48,13 +67,168 @@ function Notice({ error }) {
   return (
     <div className="ip-notice" role="alert">
       {error.message}
-      {error.extra?.whatsapp_link && (
-        <>
-          {" "}
-          <a href={error.extra.whatsapp_link} target="_blank" rel="noreferrer">
-            Open WhatsApp
-          </a>
-        </>
+    </div>
+  );
+}
+
+/** The part of `text` that matches `query`, highlighted (as in the bus search). */
+function Highlight({ text, query }) {
+  const q = query.trim();
+  const at = q ? text.toLowerCase().indexOf(q.toLowerCase()) : -1;
+  if (at === -1) return text;
+  return (
+    <>
+      {text.slice(0, at)}
+      <mark>{text.slice(at, at + q.length)}</mark>
+      {text.slice(at + q.length)}
+    </>
+  );
+}
+
+function TopicButton({ t, i, onOpen }) {
+  return (
+    <button
+      type="button"
+      className="ip-topic"
+      style={{ "--i": Math.min(i, 12) }}
+      onClick={() => onOpen(t.id, 0)}
+    >
+      <strong>{t.name}</strong>
+      <span>
+        {t.paid ? <em className="ip-badge">✓ Unlocked</em> : null}
+        {t.count} questions{t.sector ? ` · ${t.sector}` : ""}
+      </span>
+    </button>
+  );
+}
+
+/* ---------------- search with suggestions ---------------- */
+
+// Suggestions drop down over the page while typing (popular topics before the
+// first letter). Tap one to open it; Enter or "See all" shows every result.
+function Search({ popular, onOpen, onSeeAll }) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [active, setActive] = useState(-1);
+  const root = useRef(null);
+  const q = query.trim();
+
+  useEffect(() => {
+    if (!q) {
+      setResults([]);
+      setSearching(false);
+      return undefined;
+    }
+    setSearching(true);
+    const timer = window.setTimeout(() => {
+      interviewApi
+        .topics({ q })
+        .then((d) => setResults(d.topics))
+        .catch(() => setResults([]))
+        .finally(() => setSearching(false));
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [q]);
+
+  useEffect(() => setActive(-1), [q]);
+
+  // Close when tapping anywhere else.
+  useEffect(() => {
+    if (!open) return undefined;
+    const away = (e) => {
+      if (root.current && !root.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [open]);
+
+  const items = q ? results.slice(0, SUGGESTIONS) : popular.slice(0, 6);
+
+  const seeAll = () => {
+    if (!q) return;
+    setOpen(false);
+    onSeeAll(q);
+  };
+
+  const onKey = (e) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setOpen(true);
+      setActive((a) => Math.min(a + 1, items.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((a) => Math.max(a - 1, -1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (open && active >= 0 && items[active]) {
+        setOpen(false);
+        onOpen(items[active].id, 0);
+      } else seeAll();
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div className="ip-search" ref={root}>
+      <label className="ip-visually-hidden" htmlFor="ip-search-input">
+        Find a job or topic
+      </label>
+      <input
+        id="ip-search-input"
+        type="search"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls="ip-suggest"
+        aria-autocomplete="list"
+        autoComplete="off"
+        placeholder="Search a job, e.g. nurse, bank teller, accountant"
+        value={query}
+        onFocus={() => setOpen(true)}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+        onKeyDown={onKey}
+      />
+      {open && (
+        <div className="ip-suggest" id="ip-suggest" role="listbox">
+          <p className="ip-suggest-head">
+            {q ? (searching && !results.length ? "Searching…" : "Topics") : "Popular searches"}
+          </p>
+          {items.map((t, i) => (
+            <button
+              key={t.id}
+              type="button"
+              role="option"
+              aria-selected={i === active}
+              className={`ip-suggest-item${i === active ? " is-active" : ""}`}
+              onMouseEnter={() => setActive(i)}
+              onClick={() => {
+                setOpen(false);
+                onOpen(t.id, 0);
+              }}
+            >
+              <strong>
+                <Highlight text={t.name} query={q} />
+              </strong>
+              <span>
+                {t.paid ? "✓ Unlocked · " : ""}
+                {t.count} questions{t.sector ? ` · ${t.sector}` : ""}
+              </span>
+            </button>
+          ))}
+          {q && !searching && !results.length && (
+            <p className="ip-suggest-empty">No topics match “{q}”. Try another word.</p>
+          )}
+          {q && results.length > 0 && (
+            <button type="button" className="ip-suggest-all" onClick={seeAll}>
+              See all {results.length} results for “{q}” →
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
@@ -64,18 +238,25 @@ function Notice({ error }) {
 
 function Browse({ signedIn, onOpen }) {
   const [sectors, setSectors] = useState([]);
+  const [popular, setPopular] = useState([]);
   const [sector, setSector] = useState("");
-  const [query, setQuery] = useState("");
+  const [searched, setSearched] = useState(""); // "See all results" for this text
   const [topics, setTopics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hasMine, setHasMine] = useState(false);
   const [closing, setClosing] = useState(false);
-  const panelRef = useRef(null);
-  const chipsRef = useRef(null);
+  const [origin, setOrigin] = useState({ x: "50%", y: "0px" });
+  const stackRef = useRef(null);
 
   useEffect(() => {
-    interviewApi.sectors().then((d) => setSectors(d.sectors)).catch(setError);
+    interviewApi
+      .sectors()
+      .then((d) => {
+        setSectors(d.sectors);
+        setPopular(d.popular || []);
+      })
+      .catch(setError);
     if (signedIn) {
       interviewApi
         .me()
@@ -85,59 +266,69 @@ function Browse({ signedIn, onOpen }) {
   }, [signedIn]);
 
   useEffect(() => {
-    const q = query.trim();
     setLoading(true);
-    if (!q) setTopics([]); // a new area: don't show the last area's topics in its panel
-    const timer = window.setTimeout(
-      () => {
-        interviewApi
-          .topics(q ? { q } : { sector })
-          .then((d) => {
-            setTopics(d.topics);
-            setError(null);
-          })
-          .catch(setError)
-          .finally(() => setLoading(false));
-      },
-      q ? 300 : 0
-    );
-    return () => window.clearTimeout(timer);
-  }, [sector, query]);
+    setTopics([]); // never show the last area's topics under a new title
+    interviewApi
+      .topics(searched ? { q: searched } : { sector })
+      .then((d) => {
+        setTopics(d.topics);
+        setError(null);
+      })
+      .catch(setError)
+      .finally(() => setLoading(false));
+  }, [sector, searched]);
 
-  const heading = query.trim()
-    ? `Results for “${query.trim()}”`
+  // An area chip (or "See all results") opens a panel that grows out of the
+  // tapped chip and covers the chips; ✕ shrinks it back and the chips return.
+  const panelOpen = Boolean(sector || searched);
+  const heading = searched
+    ? `Results for “${searched}”`
     : sector === "mine"
     ? "My unlocked topics"
     : sector
     ? sectors.find((s) => s.id === sector)?.name || "Topics"
     : "Popular to start with";
 
-  // An area chip opens its topics in a panel that pops up under the chips;
-  // ✕ (or tapping the chip again) closes it and the chips are all in view again.
-  const inPanel = Boolean(sector) && !query.trim();
+  const growFrom = (el) => {
+    const box = stackRef.current?.getBoundingClientRect();
+    if (!el || !box) return setOrigin({ x: "50%", y: "0px" });
+    const r = el.getBoundingClientRect();
+    setOrigin({ x: `${r.left + r.width / 2 - box.left}px`, y: `${r.top + r.height / 2 - box.top}px` });
+  };
+
   const closePanel = () => {
     if (closing) return;
     setClosing(true);
     window.setTimeout(() => {
       setSector("");
+      setSearched("");
       setClosing(false);
-      chipsRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }, 180);
-  };
-  const pickSector = (id) => {
-    setQuery("");
-    if (id === sector && !query.trim()) closePanel();
-    else {
-      setClosing(false);
-      setSector(id);
-    }
+      stackRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 200);
   };
 
-  useEffect(() => {
-    if (inPanel) panelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [sector, inPanel]);
+  const pickSector = (id, e) => {
+    if (id === sector && !searched) return closePanel();
+    growFrom(e?.currentTarget);
+    setClosing(false);
+    setSearched("");
+    setSector(id);
+    window.requestAnimationFrame(() =>
+      stackRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    );
+  };
 
-  const topicList = (
+  const seeAll = (q) => {
+    growFrom(null);
+    setClosing(false);
+    setSector("");
+    setSearched(q);
+    window.requestAnimationFrame(() =>
+      stackRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    );
+  };
+
+  const list = (
     <>
       <Notice error={error} />
       {loading && !topics.length ? (
@@ -147,19 +338,7 @@ function Browse({ signedIn, onOpen }) {
       ) : (
         <div className="ip-topic-grid">
           {topics.map((t, i) => (
-            <button
-              key={t.id}
-              type="button"
-              className="ip-topic"
-              style={{ "--i": Math.min(i, 12) }}
-              onClick={() => onOpen(t.id, 0)}
-            >
-              <strong>{t.name}</strong>
-              <span>
-                {t.paid ? <em className="ip-badge">✓ Unlocked</em> : null}
-                {t.count} questions{t.sector ? ` · ${t.sector}` : ""}
-              </span>
-            </button>
+            <TopicButton key={t.id} t={t} i={i} onOpen={onOpen} />
           ))}
         </div>
       )}
@@ -173,76 +352,71 @@ function Browse({ signedIn, onOpen }) {
           <span className="ip-eyebrow">Interview practice</span>
           <h1>Stop guessing what they’ll ask.</h1>
           <p>Practise real interview questions with professional sample answers, one flash card at a time.</p>
-          <label className="ip-search">
-            <span className="ip-visually-hidden">Find a job or topic</span>
-            <input
-              type="search"
-              placeholder="Search a job, e.g. nurse, bank teller, accountant"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </label>
+          <Search popular={popular} onOpen={onOpen} onSeeAll={seeAll} />
         </div>
       </section>
 
       <section className="ip-shell ip-browse">
-        <div className="ip-chips" ref={chipsRef} role="tablist" aria-label="Areas">
-          <button
-            type="button"
-            className={!sector && !query ? "is-active" : ""}
-            onClick={() => {
-              setSector("");
-              setQuery("");
-            }}
+        <div className={`ip-stack${panelOpen && !closing ? " is-open" : ""}`} ref={stackRef}>
+          <div
+            className="ip-chips"
+            role="tablist"
+            aria-label="Areas"
+            inert={panelOpen ? "" : undefined}
+            aria-hidden={panelOpen || undefined}
           >
-            Popular
-          </button>
-          {hasMine && (
-            <button
-              type="button"
-              className={sector === "mine" ? "is-active" : ""}
-              onClick={() => pickSector("mine")}
+            {hasMine && (
+              <button type="button" onClick={(e) => pickSector("mine", e)}>
+                ⭐ My topics
+              </button>
+            )}
+            {sectors.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className={sector === s.id ? "is-active" : ""}
+                onClick={(e) => pickSector(s.id, e)}
+              >
+                {s.name}
+              </button>
+            ))}
+          </div>
+
+          {panelOpen && (
+            <div
+              key={searched || sector}
+              className={`ip-area${closing ? " is-closing" : ""}`}
+              style={{ "--ox": origin.x, "--oy": origin.y }}
+              role="region"
+              aria-labelledby="ip-area-title"
             >
-              ⭐ My topics
-            </button>
+              <div className="ip-area-head">
+                <div>
+                  <h2 id="ip-area-title" className="ip-section-title">
+                    {heading}
+                  </h2>
+                  {!loading && topics.length ? (
+                    <span className="ip-muted">{topics.length} topics</span>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  className="ip-area-close"
+                  onClick={closePanel}
+                  aria-label="Close and go back to areas"
+                >
+                  ✕
+                </button>
+              </div>
+              {list}
+            </div>
           )}
-          {sectors.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              className={sector === s.id && !query ? "is-active" : ""}
-              onClick={() => pickSector(s.id)}
-            >
-              {s.name}
-            </button>
-          ))}
         </div>
 
-        {inPanel ? (
-          <div
-            key={sector}
-            ref={panelRef}
-            className={`ip-panel${closing ? " is-closing" : ""}`}
-            role="region"
-            aria-labelledby="ip-panel-title"
-          >
-            <div className="ip-panel-head">
-              <div>
-                <h2 id="ip-panel-title" className="ip-section-title">{heading}</h2>
-                {!loading && topics.length ? (
-                  <span className="ip-muted">{topics.length} topics</span>
-                ) : null}
-              </div>
-              <button type="button" className="ip-panel-close" onClick={closePanel} aria-label="Close and go back to areas">
-                ✕
-              </button>
-            </div>
-            {topicList}
-          </div>
-        ) : (
+        {!panelOpen && (
           <>
             <h2 className="ip-section-title">{heading}</h2>
-            {topicList}
+            {list}
           </>
         )}
       </section>
@@ -250,37 +424,21 @@ function Browse({ signedIn, onOpen }) {
   );
 }
 
-/* ---------------- sign in ---------------- */
+/* ---------------- optional WhatsApp number (no code) ---------------- */
 
-function SignIn({ onDone }) {
-  const [phone, setPhone] = useState("");
-  const [code, setCode] = useState("");
-  const [sentTo, setSentTo] = useState("");
+function WhatsAppNumber({ onDone }) {
+  const [number, setNumber] = useState(savedWhatsApp);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
-  const send = async (e) => {
-    e.preventDefault();
+  const go = async (value) => {
     setBusy(true);
     setError(null);
     try {
-      const r = await interviewApi.sendCode(phone);
-      setSentTo(r.to);
-    } catch (err) {
-      setError(err);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const verify = async (e) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const r = await interviewApi.verifyCode(phone, code);
+      const r = await interviewApi.device(value.trim());
       setToken(r.token);
-      onDone(r);
+      saveWhatsApp(r.whatsapp ? value.trim() : "");
+      onDone(r.whatsapp ? value.trim() : "");
     } catch (err) {
       setError(err);
     } finally {
@@ -289,61 +447,51 @@ function SignIn({ onDone }) {
   };
 
   return (
-    <div className="ip-panel">
-      <h3>Confirm your WhatsApp number</h3>
+    <form
+      className="ip-panel ip-form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        go(number);
+      }}
+    >
+      <h3>Practise on WhatsApp too? (optional)</h3>
       <p className="ip-muted">
-        Your topic is unlocked for this number, on this website and in our WhatsApp chat.
+        By giving your WhatsApp number, you will be able to open this topic on our WhatsApp
+        platform as well (0781576825), with the same questions and answers, even when you have
+        no data for the website.
       </p>
       <Notice error={error} />
-      {!sentTo ? (
-        <form onSubmit={send} className="ip-form">
-          <label>
-            WhatsApp number
-            <input
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder="0772123456"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-            />
-          </label>
-          <button type="submit" className="ip-btn" disabled={busy}>
-            {busy ? "Sending…" : "Send me a code"}
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={verify} className="ip-form">
-          <p className="ip-muted">We sent a 6-digit code to {sentTo} on WhatsApp.</p>
-          <label>
-            Code
-            <input
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              required
-            />
-          </label>
-          <button type="submit" className="ip-btn" disabled={busy}>
-            {busy ? "Checking…" : "Confirm"}
-          </button>
-          <button type="button" className="ip-link" onClick={() => setSentTo("")}>
-            Use another number
-          </button>
-        </form>
+      <label>
+        <span className="ip-label-row">
+          WhatsApp number <span className="ip-optional">optional</span>
+        </span>
+        <input
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder="0772123456"
+          value={number}
+          onChange={(e) => setNumber(e.target.value)}
+        />
+      </label>
+      <p className="ip-muted ip-small">No code needed. Leave it empty to use this topic on this browser only.</p>
+      <button type="submit" className="ip-btn" disabled={busy}>
+        {busy ? "Please wait…" : "Continue to payment"}
+      </button>
+      {number.trim() && (
+        <button type="button" className="ip-link" disabled={busy} onClick={() => go("")}>
+          Skip, use this browser only
+        </button>
       )}
-    </div>
+    </form>
   );
 }
 
 /* ---------------- payment ---------------- */
 
-function Pay({ topic, onPaid }) {
+function Pay({ topic, defaultPhone, onPaid }) {
   const [method, setMethod] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(defaultPhone || "");
   const [payment, setPayment] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -480,9 +628,11 @@ function Pay({ topic, onPaid }) {
 
 /* ---------------- unlock ---------------- */
 
-function Unlock({ topic, firstLocked, signedIn, onSignedIn, onPaid }) {
+function Unlock({ topic, firstLocked, onSignedIn, onPaid }) {
   const [agree, setAgree] = useState(false);
   const [step, setStep] = useState("offer");
+  const [whatsapp, setWhatsapp] = useState("");
+  // The server sends stand-in text for these, shown blurred: a hint, never the questions.
   const remaining = topic.cards.slice(firstLocked);
 
   return (
@@ -499,13 +649,16 @@ function Unlock({ topic, firstLocked, signedIn, onSignedIn, onPaid }) {
         </p>
       </div>
 
-      <div className="ip-panel">
-        <h3>Still to practise ({remaining.length})</h3>
-        <ol className="ip-remaining" start={firstLocked + 1}>
-          {remaining.map((c, i) => (
+      <div className="ip-panel ip-locked">
+        <ol className="ip-remaining" aria-hidden="true">
+          {remaining.slice(0, 5).map((c, i) => (
             <li key={i}>{c.question}</li>
           ))}
         </ol>
+        <p className="ip-locked-badge">
+          🔒 {remaining.length} more {remaining.length === 1 ? "question" : "questions"} with
+          sample answers
+        </p>
       </div>
 
       {step === "offer" && (
@@ -519,32 +672,28 @@ function Unlock({ topic, firstLocked, signedIn, onSignedIn, onPaid }) {
               <Paragraphs text={topic.terms} />
             </div>
           )}
-          <button
-            type="button"
-            className="ip-btn"
-            disabled={!agree}
-            onClick={() => setStep(signedIn ? "pay" : "signin")}
-          >
-            Continue to payment
+          <button type="button" className="ip-btn" disabled={!agree} onClick={() => setStep("number")}>
+            Continue
           </button>
         </div>
       )}
-      {step === "signin" && (
-        <SignIn
-          onDone={(r) => {
-            onSignedIn(r);
+      {step === "number" && (
+        <WhatsAppNumber
+          onDone={(number) => {
+            setWhatsapp(number);
+            onSignedIn();
             setStep("pay");
           }}
         />
       )}
-      {step === "pay" && <Pay topic={topic} onPaid={onPaid} />}
+      {step === "pay" && <Pay topic={topic} defaultPhone={whatsapp} onPaid={onPaid} />}
     </div>
   );
 }
 
 /* ---------------- card ---------------- */
 
-function Card({ topic, index, setIndex, signedIn, onSignedIn, onPaid, onBack }) {
+function Card({ topic, index, setIndex, onSignedIn, onPaid, onBack }) {
   const [show, setShow] = useState(false);
   const firstLocked = useMemo(() => {
     const i = topic.cards.findIndex((c) => c.locked);
@@ -560,13 +709,7 @@ function Card({ topic, index, setIndex, signedIn, onSignedIn, onPaid, onBack }) 
         <button type="button" className="ip-link ip-back" onClick={() => setIndex(firstLocked - 1)}>
           ← Back to the cards
         </button>
-        <Unlock
-          topic={topic}
-          firstLocked={firstLocked}
-          signedIn={signedIn}
-          onSignedIn={onSignedIn}
-          onPaid={onPaid}
-        />
+        <Unlock topic={topic} firstLocked={firstLocked} onSignedIn={onSignedIn} onPaid={onPaid} />
       </div>
     );
   }
@@ -722,7 +865,6 @@ export default function InterviewPractice() {
           topic={topic}
           index={index}
           setIndex={setIndex}
-          signedIn={signedIn}
           onSignedIn={() => setSignedIn(true)}
           onPaid={onPaid}
           onBack={() => setTopic(null)}
@@ -735,9 +877,8 @@ export default function InterviewPractice() {
 }
 
 // After paying, open on the first card that used to be locked: the free preview
-// size is the same rule as the bot's (30% over 20 questions, else 50%).
+// is the same rule as the bot's (6 questions over 20, else 5, at least one left).
 function firstLockedFree(t) {
   const total = t.cards.length;
-  const share = total > 20 ? 0.3 : 0.5;
-  return Math.min(total - 1, Math.max(1, Math.ceil(total * share)));
+  return Math.max(1, Math.min(total > 20 ? 6 : 5, total - 1));
 }

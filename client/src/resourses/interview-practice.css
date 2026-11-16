@@ -106,8 +106,6 @@
 .ip-offer { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
 .ip-price s { color: var(--ip-muted); font-size: 17px; }
 .ip-price strong { color: var(--ip-ink); font-size: 28px; }
-.ip-remaining { margin: 4px 0 0; padding-left: 26px; color: var(--ip-text); line-height: 1.5; } /* full list, no inner scroll box */
-.ip-remaining li + li { margin-top: 8px; }
 .ip-check { display: flex; align-items: center; gap: 10px; min-height: var(--ip-tap); font-weight: 600; cursor: pointer; }
 .ip-check input { width: 20px; height: 20px; flex: 0 0 auto; accent-color: var(--ip-primary); }
 .ip-terms { margin: 10px 0 4px; padding: 14px; border-radius: 12px; background: var(--ip-surface); color: var(--ip-muted); font-size: 13px; line-height: 1.6; }
@@ -200,26 +198,6 @@
   .ph-short { display: none; }
 }
 
-/* Area panel: tapping an area chip pops its topics up under the chips; ✕ closes it. */
-.ip-panel { margin-top: 14px; padding: 14px; border: 1px solid var(--ip-border); border-radius: 16px; background: var(--ip-surface); box-shadow: 0 14px 34px rgba(7,27,61,.10); transform-origin: top center; animation: ip-panel-in .26s cubic-bezier(.2,.9,.3,1.2) both; scroll-margin-top: 130px; }
-.ip-panel.is-closing { animation: ip-panel-out .18s ease-in both; }
-.ip-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.ip-panel-head .ip-section-title { margin: 0 !important; }
-.ip-panel-head .ip-muted { font-size: 13px; }
-.ip-panel-close { flex: none; display: inline-flex; align-items: center; justify-content: center; width: var(--ip-tap); height: var(--ip-tap); border: 1px solid var(--ip-border) !important; border-radius: 50% !important; background: var(--ip-white); color: var(--ip-ink); font-size: 18px; line-height: 1; cursor: pointer; transition: background .15s ease, transform .15s ease; }
-.ip-panel-close:hover { background: var(--ip-primary-light); transform: rotate(90deg); }
-.ip-panel .ip-topic { animation: ip-topic-in .28s ease-out both; animation-delay: calc(var(--i, 0) * 30ms + 80ms); }
-.ip-chips button { transition: background .15s ease, color .15s ease, border-color .15s ease, transform .15s ease; }
-.ip-chips button:active { transform: scale(.95); }
-.ip-chips button.is-active { animation: ip-chip-pick .25s ease-out; }
-@keyframes ip-panel-in { from { opacity: 0; transform: translateY(-10px) scale(.94); } to { opacity: 1; transform: none; } }
-@keyframes ip-panel-out { to { opacity: 0; transform: translateY(-8px) scale(.95); } }
-@keyframes ip-topic-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@keyframes ip-chip-pick { 50% { transform: scale(1.08); } }
-@media (prefers-reduced-motion: reduce) {
-  .ip-panel, .ip-panel.is-closing, .ip-panel .ip-topic, .ip-chips button.is-active { animation: none; }
-}
-
 /* Bus booking "coming soon" (until the tab goes live) */
 .ph-soon { display: grid; justify-items: center; gap: 10px; max-width: 460px; margin: 0 auto; padding: 56px 20px 64px; text-align: center; }
 .ph-soon-icon { display: grid; place-items: center; width: 76px; height: 76px; border-radius: 50%; background: var(--ip-primary-light); font-size: 38px; animation: ph-soon-bob 2.4s ease-in-out infinite; }
@@ -228,6 +206,52 @@
 .ph-soon .ip-btn { color: var(--ip-white) !important; text-decoration: none !important; }
 @keyframes ph-soon-bob { 50% { transform: translateY(-5px); } }
 @media (prefers-reduced-motion: reduce) { .ph-soon-icon { animation: none; } }
-/* the header stays on top while scrolling, so scrolled-to content lands below it */
-.ip-chips { scroll-margin-top: 130px; }
-@media (min-width: 640px) { .ip-chips, .ip-panel { scroll-margin-top: 76px; } }
+
+/* ---- search suggestions: drop down over the chips while typing ---- */
+.ip-hero { position: relative; z-index: 20; }
+.ip-search { position: relative; }
+.ip-suggest { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 30; display: grid; padding: 6px; border: 1px solid var(--ip-border); border-radius: 16px; background: var(--ip-white); box-shadow: 0 22px 50px rgba(7,27,61,.18); transform-origin: top center; animation: ip-drop .18s ease-out both; }
+.ip-suggest-head { margin: 4px 10px 6px !important; color: var(--ip-muted); font-size: 12px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+.ip-page .ip-suggest-item { display: grid; gap: 2px; width: 100%; min-height: var(--ip-tap); padding: 10px 12px; border: 0; border-radius: 12px !important; background: none; color: var(--ip-ink); text-align: left; cursor: pointer; }
+.ip-suggest-item strong { font-size: 15px; font-weight: 700; }
+.ip-suggest-item span { color: var(--ip-muted); font-size: 13px; }
+.ip-suggest-item mark { padding: 0 1px; border-radius: 3px; background: #ffe9a8; color: inherit; }
+.ip-page .ip-suggest-item.is-active, .ip-page .ip-suggest-item:hover { background: var(--ip-primary-light); }
+.ip-suggest-empty { margin: 4px 10px 8px !important; color: var(--ip-muted); }
+.ip-page .ip-suggest-all { min-height: var(--ip-tap); margin-top: 4px; padding: 10px 12px; border: 0; border-top: 1px solid var(--ip-border); border-radius: 0 0 12px 12px !important; background: none; color: var(--ip-primary); font-weight: 700; text-align: left; cursor: pointer; }
+.ip-page .ip-suggest-all:hover { background: var(--ip-surface); }
+@keyframes ip-drop { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
+
+/* ---- area panel: grows out of the tapped chip and covers the chips ---- */
+.ip-stack { display: grid; scroll-margin-top: 130px; }
+.ip-stack > * { grid-area: 1 / 1; }
+.ip-chips { transition: opacity .2s ease, transform .2s ease; }
+.ip-stack.is-open .ip-chips { opacity: 0; transform: scale(.97); pointer-events: none; }
+.ip-area { position: relative; z-index: 2; align-self: start; padding: 14px; border: 1px solid var(--ip-border); border-radius: 18px; background: var(--ip-surface); box-shadow: 0 18px 44px rgba(7,27,61,.14); transform-origin: var(--ox, 50%) var(--oy, 0); animation: ip-area-in .32s cubic-bezier(.2,.9,.3,1.1) both; }
+.ip-area.is-closing { animation: ip-area-out .2s ease-in both; }
+.ip-area-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.ip-area-head .ip-section-title { margin: 0 !important; }
+.ip-area-head .ip-muted { font-size: 13px; }
+.ip-page .ip-area-close { flex: none; display: inline-flex; align-items: center; justify-content: center; width: var(--ip-tap); height: var(--ip-tap); border: 1px solid var(--ip-border) !important; border-radius: 50% !important; background: var(--ip-white); color: var(--ip-ink); font-size: 18px; line-height: 1; cursor: pointer; transition: background .15s ease, transform .15s ease; }
+.ip-page .ip-area-close:hover { background: var(--ip-primary-light); transform: rotate(90deg); }
+.ip-area .ip-topic { animation: ip-topic-in .28s ease-out both; animation-delay: calc(var(--i, 0) * 30ms + 120ms); }
+.ip-chips button { transition: background .15s ease, color .15s ease, border-color .15s ease, transform .15s ease; }
+.ip-chips button:active { transform: scale(.95); }
+@keyframes ip-area-in { from { opacity: 0; transform: scale(.25); } 60% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes ip-area-out { to { opacity: 0; transform: scale(.3); } }
+@keyframes ip-topic-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ---- unlock: the rest of the topic, blurred so it cannot be read ---- */
+.ip-locked { position: relative; overflow: hidden; }
+.ip-remaining { margin: 0; padding-left: 22px; color: var(--ip-text); line-height: 1.5; filter: blur(5px); user-select: none; pointer-events: none; }
+.ip-remaining li + li { margin-top: 10px; }
+.ip-locked::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.1), rgba(255,255,255,.75)); pointer-events: none; }
+.ip-panel > .ip-locked-badge { position: absolute; z-index: 1; left: 50%; top: 50%; transform: translate(-50%, -50%); width: max-content; max-width: calc(100% - 32px); margin: 0; padding: 10px 16px; border-radius: 999px; background: var(--ip-ink); color: var(--ip-white); font-weight: 700; font-size: 14px; line-height: 1.35; text-align: center; box-shadow: 0 10px 24px rgba(7,27,61,.25); }
+.ip-label-row { display: flex; align-items: center; gap: 8px; }
+.ip-optional {  padding: 1px 8px; border-radius: 999px; background: var(--ip-surface); color: var(--ip-muted); font-size: 12px; font-weight: 600; }
+.ip-small { font-size: 13px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ip-suggest, .ip-area, .ip-area.is-closing, .ip-area .ip-topic, .ip-chips { animation: none; transition: none; }
+}
+@media (min-width: 640px) { .ip-stack { scroll-margin-top: 76px; } }
