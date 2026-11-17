@@ -6,6 +6,7 @@ import "../resourses/interview-practice.css";
 
 const InterviewPractice = lazy(() => import("./InterviewPractice"));
 const PublicBusBooking = lazy(() => import("./PublicBusBooking"));
+const BillsPayments = lazy(() => import("./BillsPayments"));
 
 // OnHighTech Solutions on WhatsApp: one number for every solution (0781576825).
 // Never the bus booking bot. Typing "interviews" opens the interview practice
@@ -89,16 +90,21 @@ function BusComingSoon() {
 }
 
 // OnHighTech Solutions home page: one tab per solution (Interview practice,
-// Bus booking, more to come).
+// Bus booking, Bills & airtime, more to come).
 //   /             -> Interviews (or Bus booking when coming back from a Tenda payment)
 //   /interviews   -> Interviews
 //   /bus-booking  -> Bus booking
+//   /bills        -> Bills & airtime (airtime, ZESA, DStv through Paynow)
 // /tenda still opens the bus booking page on its own.
 export default function PublicHome() {
   const { pathname, search } = useLocation();
   const params = new URLSearchParams(search);
   const tendaReturn = params.get("paymentReturn") === "1";
-  const tab = pathname.startsWith("/bus-booking") || (pathname === "/" && tendaReturn) ? "bus" : "interviews";
+  const tab = pathname.startsWith("/bills")
+    ? "bills"
+    : pathname.startsWith("/bus-booking") || (pathname === "/" && tendaReturn)
+    ? "bus"
+    : "interviews";
   // Coming back from a payment means they already chose the website.
   const [chosen, setChosen] = useState(
     () => choiceMade() || tendaReturn || params.get("interviewPayment") === "1"
@@ -123,7 +129,12 @@ export default function PublicHome() {
               <span className="ph-short">Interviews</span>
             </Link>
             <Link to="/bus-booking" role="tab" aria-selected={tab === "bus"}>
-              Bus booking
+              <span className="ph-long">Bus booking</span>
+              <span className="ph-short">Bus</span>
+            </Link>
+            <Link to="/bills" role="tab" aria-selected={tab === "bills"}>
+              <span className="ph-long">Bills &amp; airtime</span>
+              <span className="ph-short">Bills</span>
             </Link>
           </div>
           <a className="ph-wa-link" href={whatsapp} aria-label="Continue on WhatsApp">
@@ -132,7 +143,9 @@ export default function PublicHome() {
         </div>
       </nav>
       <Suspense fallback={<Loader />}>
-        {tab === "bus" ? (
+        {tab === "bills" ? (
+          <BillsPayments />
+        ) : tab === "bus" ? (
           // BUS LIVE: replace the next line with  <PublicBusBooking />
           // (a Tenda payment return still needs the real page to confirm the ticket)
           tendaReturn ? <PublicBusBooking /> : <BusComingSoon />

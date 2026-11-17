@@ -191,6 +191,7 @@ function App() {
           <Route path="/tenda" element={<PublicBusBooking />} />
           <Route path="/interviews" element={<PublicHome />} />
           <Route path="/bus-booking" element={<PublicHome />} />
+          <Route path="/bills" element={<PublicHome />} />
           <Route
             path="/register"
             element={
