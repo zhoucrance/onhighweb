@@ -35,6 +35,12 @@ module.exports = defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/careers-bot/, ""),
       },
+      // Bill payments service (Paynow BillPay); in production nginx serves /bills-api.
+      "/bills-api": {
+        target: process.env.BILLS_URL || "http://localhost:8100",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/bills-api/, ""),
+      },
     },
   },
 });

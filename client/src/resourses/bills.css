@@ -50,3 +50,73 @@
   .bp-card { max-width: 560px; padding: 24px; }
   .ip-page .bp-submit { width: auto; justify-self: start; }
 }
+
+/* ---- groups and billers (all bills, grouped) ---- */
+.bp-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ip-page .bp-group { display: grid; justify-items: start; gap: 6px; min-height: 112px; padding: 14px; border: 1px solid var(--ip-border); border-radius: 16px !important; background: var(--ip-white); color: var(--ip-ink); text-align: left; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; animation: bp-in .3s ease both; }
+.bp-group:hover { border-color: var(--ip-primary); box-shadow: 0 10px 24px rgba(7,27,61,.08); }
+.bp-group:active { transform: scale(.97); }
+.bp-group strong { font-size: 15px; line-height: 1.25; }
+.bp-group > span:last-child { color: var(--ip-muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.bp-billers { display: grid; gap: 10px; }
+.bp-logo { grid-row: 1 / 3; width: 44px; height: 44px; border-radius: 12px; object-fit: contain; background: var(--ip-surface); }
+.bp-biller-head { display: flex; align-items: center; gap: 12px; }
+.bp-biller-head h2 { font-size: 19px; line-height: 1.25; }
+.bp-biller-head .bp-logo, .bp-biller-head .bp-service-icon { flex: none; }
+.bp-products { display: grid; gap: 8px; }
+.ip-page .bp-product { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 48px; padding: 10px 14px; border: 1px solid var(--ip-border); border-radius: 12px !important; background: var(--ip-white); color: var(--ip-ink); text-align: left; cursor: pointer; }
+.ip-page .bp-product.is-active { border-color: var(--ip-primary); background: var(--ip-primary-light); }
+.bp-product span { color: var(--ip-primary-dark); font-weight: 700; white-space: nowrap; }
+.bp-note { padding: 10px 12px; border-radius: 10px; background: var(--ip-surface); }
+.bp-demo { margin-bottom: 12px !important; padding: 8px 12px; border-radius: 10px; background: #efe9ff; color: #4b2e9e; font-size: 13px; font-weight: 600; }
+
+/* ---- result: tokens, receipts and SMS texts, each on its own ---- */
+.bp-voucher { display: grid; gap: 4px; padding: 14px; border: 2px dashed var(--ip-primary); border-radius: 14px; background: var(--ip-primary-light); }
+.bp-voucher strong { font-size: 22px; letter-spacing: 1px; word-break: break-all; }
+.bp-receipt { margin: 0; border: 1px solid var(--ip-border); border-radius: 12px; overflow: hidden; }
+.bp-receipt figcaption { padding: 8px 12px; background: var(--ip-surface); color: var(--ip-muted); font-size: 13px; font-weight: 600; }
+.bp-receipt iframe { display: block; width: 100%; min-height: 140px; border: 0; background: #fff; }
+.bp-sms { padding: 10px 12px; border-radius: 12px 12px 12px 4px; background: #e7f8ee; color: #135c34; line-height: 1.5; }
+
+@media (min-width: 640px) {
+  .bp-groups { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .bp-billers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 960px) {
+  .bp-groups { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { .bp-group { animation: none; } }
+
+/* ---- biller sheet: slides up like the bus booking sheet (full screen on phones) ---- */
+.bp-sheet-root { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: flex-end; justify-content: center; }
+.bp-sheet-backdrop { position: absolute; inset: 0; background: rgba(7,26,77,.55); backdrop-filter: blur(3px); animation: bp-fade .24s ease both; }
+.bp-sheet-root.is-closing .bp-sheet-backdrop { animation: bp-fade .24s ease both reverse; }
+.bp-sheet { position: relative; z-index: 1; display: flex; flex-direction: column; width: 100%; height: 100vh; height: 100dvh; background: var(--ip-white); animation: bp-up .3s cubic-bezier(.2,.9,.28,1) both; overflow: hidden; }
+.bp-sheet-root.is-closing .bp-sheet { animation: bp-down .24s ease both; }
+.bp-sheet-head { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px; border-bottom: 1px solid var(--ip-border); }
+.ip-page .bp-sheet-close { flex: none; display: grid; place-items: center; width: var(--ip-tap); height: var(--ip-tap); border: 1px solid var(--ip-border) !important; border-radius: 50% !important; background: var(--ip-white); color: var(--ip-ink); font-size: 18px; cursor: pointer; transition: background .15s ease, transform .15s ease; }
+.ip-page .bp-sheet-close:hover { background: var(--ip-primary-light); transform: rotate(90deg); }
+.bp-sheet-head .bp-logo, .bp-sheet-head .bp-service-icon { flex: none; grid-row: auto; width: 40px; height: 40px; }
+.bp-sheet-title { min-width: 0; }
+.bp-sheet-title h2 { font-size: 17px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bp-sheet-title p { margin-top: 2px !important; color: var(--ip-muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bp-sheet-body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+.bp-sheet-step { animation: bp-in .26s ease both; }
+/* the main button stays in reach at the bottom of the sheet */
+.bp-sheet .bp-form > .bp-submit, .bp-sheet .bp-review > .bp-submit { position: sticky; bottom: 0; box-shadow: 0 -8px 18px rgba(255,255,255,.9); }
+
+.ip-area .bp-service { animation: ip-topic-in .28s ease-out both; animation-delay: calc(var(--i, 0) * 30ms + 120ms); }
+.bp-page .ip-chips { margin-bottom: 4px; }
+
+@keyframes bp-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bp-up { from { opacity: .6; transform: translateY(100%); } to { opacity: 1; transform: none; } }
+@keyframes bp-down { to { opacity: .4; transform: translateY(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  .bp-sheet, .bp-sheet-backdrop, .bp-sheet-step, .ip-area .bp-service { animation: none; }
+}
+
+/* bigger screens: a sheet with rounded top instead of the full screen */
+@media (min-width: 640px) {
+  .bp-sheet { width: min(560px, 100%); height: auto; max-height: 90vh; border-radius: 22px 22px 0 0; }
+  .bp-sheet .bp-submit { width: 100%; }
+}

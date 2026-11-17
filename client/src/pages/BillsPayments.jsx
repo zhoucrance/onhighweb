@@ -1,76 +1,61 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../resourses/interview-practice.css";
 import "../resourses/bills.css";
 
-// Bills & airtime: airtime, ZESA tokens and DStv, paid through Paynow.
-// The screens and checks are ready; the Paynow BillPay connection (the
-// careers-bot /bills service) is added once its vendor docs are in hand, so
-// the last step says payments open soon instead of charging anyone.
+// Bills & airtime: every biller on our Paynow BillPay account, grouped by type
+// (Airtime & data, Electricity, TV, Internet, Councils, Insurance, Schools ...).
+// Each biller's own BillPay settings drive its form. Flow:
+//   group -> biller -> details -> confirm (AUTH: name, amount owing) -> pay -> tokens / receipts
+// Paying for real waits for the customer-payment step (Paynow); locally, demo
+// mode (BILLS_DEMO=1 on the bills service) lets the whole flow be tried.
 
-const SERVICES = [
-  { id: "airtime", icon: "📱", name: "Airtime", blurb: "Econet, NetOne and Telecel" },
-  { id: "zesa", icon: "⚡", name: "ZESA tokens", blurb: "Prepaid electricity" },
-  { id: "dstv", icon: "📺", name: "DStv", blurb: "Pay your subscription" },
-];
-const NETWORKS = [
-  { id: "econet", name: "Econet" },
-  { id: "netone", name: "NetOne" },
-  { id: "telecel", name: "Telecel" },
-];
-const CURRENCIES = ["USD", "ZiG"];
-const QUICK = { airtime: [1, 2, 5, 10], zesa: [5, 10, 20, 50], dstv: [] };
-const PAYMENTS_LIVE = false; // switch on once Paynow BillPay is connected
+const BASE = import.meta.env.VITE_BILLS_API || "/bills-api/bills";
+const ICONS = {
+  airtime: "📱", electricity: "⚡", tv: "📺", internet: "🌐", council: "🏛️",
+  insurance: "🛡️", education: "🎓", lotto: "🎟️", giving: "⛪", other: "🧾",
+};
+const QUICK = [1, 2, 5, 10, 20, 50];
 
-// ---- the same input rules as the bill payments service (bill_payments/ rules) ----
-
-export function normaliseMobile(raw) {
-  let digits = String(raw || "").replace(/\D/g, "");
-  if (digits.startsWith("00263")) digits = digits.slice(2);
-  if (digits.startsWith("0") && digits.length === 10) digits = `263${digits.slice(1)}`;
-  else if (digits.length === 9 && digits.startsWith("7")) digits = `263${digits}`;
-  return /^2637\d{8}$/.test(digits) ? digits : null;
+async function call(path, { method = "GET", body } = {}) {
+  let response;
+  try {
+    response = await fetch(`${BASE}${path}`, {
+      method,
+      headers: body ? { "Content-Type": "application/json" } : {},
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new Error("We could not reach the server. Check your connection and try again.");
+  }
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(typeof data.detail === "string" ? data.detail : "Something went wrong. Please try again.");
+  }
+  return data;
 }
 
-export function normaliseMeter(raw) {
-  const meter = String(raw || "").replace(/[\s-]/g, "");
-  return /^\d{11,13}$/.test(meter) ? meter : null;
-}
-
-export function normaliseSmartcard(raw) {
-  const card = String(raw || "").replace(/[\s-]/g, "");
-  return /^\d{8,12}$/.test(card) ? card : null;
-}
-
-export function amountError(raw) {
-  const text = String(raw ?? "").trim();
-  if (!text) return "Enter the amount.";
-  if (!/^\d+(\.\d+)?$/.test(text)) return "Enter the amount as a number, e.g. 1 or 2.50.";
-  if (Number(text) <= 0) return "The amount must be more than zero.";
-  if (!/^\d+(\.\d{1,2})?$/.test(text)) return "Use at most two decimal places, e.g. 2.50.";
-  return "";
-}
-
-const localNumber = (n) => (n.startsWith("263") ? `0${n.slice(3)}` : n);
+const currencyName = (c) => (c === "ZWG" ? "ZiG" : c || "");
 const money = (amount, currency) =>
-  currency === "USD" ? `$${Number(amount).toFixed(2)}` : `ZiG ${Number(amount).toFixed(2)}`;
+  amount === null || amount === undefined || amount === ""
+    ? "—"
+    : currency === "USD"
+    ? `$${Number(amount).toFixed(2)}`
+    : `${currencyName(currency)} ${Number(amount).toFixed(2)}`;
 
-// ---- pieces ----
+function regexOk(pattern, value) {
+  if (!pattern) return true;
+  try {
+    return new RegExp(pattern).test(value);
+  } catch {
+    return true; // a pattern the browser cannot read: the server checks it
+  }
+}
 
-function Chips({ options, value, onChange, label }) {
+function Notice({ text, kind = "error" }) {
+  if (!text) return null;
   return (
-    <div className="ip-chips bp-chips" role="radiogroup" aria-label={label}>
-      {options.map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          role="radio"
-          aria-checked={value === o.id}
-          className={value === o.id ? "is-active" : ""}
-          onClick={() => onChange(o.id)}
-        >
-          {o.name}
-        </button>
-      ))}
+    <div className={kind === "error" ? "ip-notice" : "bp-soon"} role={kind === "error" ? "alert" : "status"}>
+      {text}
     </div>
   );
 }
@@ -91,166 +76,232 @@ function Field({ label, hint, error, children }) {
   );
 }
 
-function AmountField({ service, amount, setAmount, currency, setCurrency, error }) {
-  return (
-    <>
-      <Chips
-        label="Currency"
-        options={CURRENCIES.map((c) => ({ id: c, name: c }))}
-        value={currency}
-        onChange={setCurrency}
-      />
-      <Field label={`Amount (${currency})`} error={error}>
-        <input
-          inputMode="decimal"
-          placeholder={currency === "USD" ? "e.g. 5" : "e.g. 100"}
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
-      </Field>
-      {currency === "USD" && QUICK[service].length > 0 && (
-        <div className="bp-quick" aria-label="Quick amounts">
-          {QUICK[service].map((n) => (
-            <button key={n} type="button" onClick={() => setAmount(String(n))}>
-              ${n}
-            </button>
-          ))}
-        </div>
-      )}
-    </>
+function BillerIcon({ biller, group }) {
+  return biller.iconUrl ? (
+    <img className="bp-logo" src={biller.iconUrl} alt="" loading="lazy" />
+  ) : (
+    <span className="bp-service-icon" aria-hidden="true">
+      {ICONS[group] || "🧾"}
+    </span>
   );
 }
 
-// ---- the form for one service ----
+/* ---------------- step 1: the biller's form ---------------- */
 
-function ServiceForm({ service, onReview }) {
-  const [network, setNetwork] = useState("econet");
-  const [phone, setPhone] = useState("");
-  const [meter, setMeter] = useState("");
-  const [card, setCard] = useState("");
+function BillerForm({ biller, onQuoted }) {
+  const [productCode, setProductCode] = useState(biller.products[0]?.code || "");
+  const [member, setMember] = useState("");
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState("USD");
+  const [quantity, setQuantity] = useState("1");
+  const [meta, setMeta] = useState({});
   const [tried, setTried] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const product = biller.products.find((p) => p.code === productCode) || biller.products[0];
+  const fixed = product.price !== null && product.price !== undefined;
+  const chooses = !fixed && product.authAmountMandated === null;
+  const quick = QUICK.filter(
+    (n) => (product.minAmount == null || n >= product.minAmount) && (product.maxAmount == null || n <= product.maxAmount)
+  ).slice(0, 4);
 
   const errors = useMemo(() => {
     const e = {};
-    if (service === "airtime" && !normaliseMobile(phone))
-      e.phone = "Enter a valid Zimbabwe mobile number, e.g. 0771234567.";
-    if (service === "zesa" && !normaliseMeter(meter))
-      e.meter = "Enter the meter number (11 to 13 digits), as shown on the meter.";
-    if (service === "dstv" && !normaliseSmartcard(card))
-      e.card = "Enter the smartcard or account number on your DStv decoder or statement.";
-    const a = amountError(amount);
-    if (a) e.amount = a;
+    const m = member.trim();
+    if (!m) e.member = `Enter the ${biller.memberLabel.toLowerCase()}.`;
+    else if (!regexOk(biller.memberRegex, m)) e.member = biller.memberDesc || `Check the ${biller.memberLabel.toLowerCase()}.`;
+    if (chooses) {
+      const a = amount.trim();
+      if (!/^\d+(\.\d{1,2})?$/.test(a) || Number(a) <= 0) e.amount = "Enter the amount, e.g. 5 or 2.50.";
+      else if (product.minAmount != null && Number(a) < product.minAmount) e.amount = `The smallest amount is ${product.minAmount}.`;
+      else if (product.maxAmount != null && Number(a) > product.maxAmount) e.amount = `The largest amount is ${product.maxAmount}.`;
+    }
+    if (product.allowQuantity && !(Number.isInteger(Number(quantity)) && Number(quantity) >= 1))
+      e.quantity = "Enter how many (1 or more).";
+    product.metadata.forEach((f) => {
+      if (f.required && !String(meta[f.name] || "").trim()) e[`meta:${f.name}`] = `Enter the ${f.name.toLowerCase()}.`;
+    });
     return e;
-  }, [service, phone, meter, card, amount]);
+  }, [member, amount, quantity, meta, biller, product, chooses]);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     setTried(true);
+    setError("");
     if (Object.keys(errors).length) return;
-    const details =
-      service === "airtime"
-        ? [
-            ["Network", NETWORKS.find((n) => n.id === network).name],
-            ["Mobile number", localNumber(normaliseMobile(phone))],
-          ]
-        : service === "zesa"
-        ? [["Meter number", normaliseMeter(meter)]]
-        : [["Smartcard / account", normaliseSmartcard(card)]];
-    onReview({ service, details, amount: Number(amount), currency });
+    setBusy(true);
+    try {
+      const q = await call("/quote", {
+        method: "POST",
+        body: {
+          biller: biller.code,
+          member: member.trim(),
+          product: product.code,
+          amount: chooses ? amount.trim() : null,
+          quantity: Number(quantity) || 1,
+          metadata: meta,
+        },
+      });
+      onQuoted(q, product);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
   };
-
-  const show = (key) => (tried ? errors[key] : "");
+  const show = (k) => (tried ? errors[k] : "");
 
   return (
     <form className="bp-form" onSubmit={submit} noValidate>
-      {service === "airtime" && (
+      {biller.description && <p className="bp-hint">{biller.description}</p>}
+      <Notice text={error} />
+
+      {biller.products.length > 1 && (
+        <div className="bp-field">
+          <span className="bp-label">Choose</span>
+          <div className="bp-products" role="radiogroup" aria-label="Choose">
+            {biller.products.map((p) => (
+              <button
+                key={p.code}
+                type="button"
+                role="radio"
+                aria-checked={p.code === product.code}
+                className={`bp-product${p.code === product.code ? " is-active" : ""}`}
+                onClick={() => setProductCode(p.code)}
+              >
+                <strong>{p.name}</strong>
+                {p.price != null && <span>{money(p.price, p.requiresForex ? "USD" : "ZWG")}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {product.prePurchase && <p className="bp-hint bp-note">{product.prePurchase}</p>}
+
+      <Field label={biller.memberLabel} hint={biller.memberDesc} error={show("member")}>
+        <input value={member} onChange={(e) => setMember(e.target.value)} autoComplete="off" />
+      </Field>
+
+      {product.metadata.map((f) => (
+        <Field
+          key={f.name}
+          label={`${f.name}${f.required ? "" : " (optional)"}`}
+          hint={f.description}
+          error={show(`meta:${f.name}`)}
+        >
+          <input
+            value={meta[f.name] || ""}
+            onChange={(e) => setMeta((m) => ({ ...m, [f.name]: e.target.value }))}
+          />
+        </Field>
+      ))}
+
+      {chooses && (
         <>
-          <span className="bp-label">Network</span>
-          <Chips label="Network" options={NETWORKS} value={network} onChange={setNetwork} />
-          <Field label="Mobile number to top up" error={show("phone")}>
-            <input
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder="0771234567"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
+          <Field
+            label={product.amountLabel || "Amount"}
+            hint={[
+              product.amountDesc,
+              product.minAmount != null || product.maxAmount != null
+                ? `From ${product.minAmount ?? 0}${product.maxAmount != null ? ` to ${product.maxAmount}` : ""}.`
+                : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            error={show("amount")}
+          >
+            <input inputMode="decimal" placeholder="e.g. 5" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </Field>
+          {quick.length > 0 && (
+            <div className="bp-quick" aria-label="Quick amounts">
+              {quick.map((n) => (
+                <button key={n} type="button" onClick={() => setAmount(String(n))}>
+                  {n}
+                </button>
+              ))}
+            </div>
+          )}
         </>
       )}
-      {service === "zesa" && (
-        <Field
-          label="Meter number"
-          hint="11 to 13 digits, as shown on your prepaid meter."
-          error={show("meter")}
-        >
-          <input
-            inputMode="numeric"
-            placeholder="e.g. 01234567890"
-            value={meter}
-            onChange={(e) => setMeter(e.target.value)}
-          />
+      {fixed && product.allowQuantity && (
+        <Field label={product.quantityLabel} error={show("quantity")}>
+          <input inputMode="numeric" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
         </Field>
       )}
-      {service === "dstv" && (
-        <Field
-          label="Smartcard or account number"
-          hint="On your decoder, smartcard or DStv statement."
-          error={show("card")}
-        >
-          <input
-            inputMode="numeric"
-            placeholder="e.g. 4123456789"
-            value={card}
-            onChange={(e) => setCard(e.target.value)}
-          />
-        </Field>
+      {!fixed && !chooses && (
+        <p className="bp-hint bp-note">We will show you the amount owing on the next step.</p>
       )}
-      <AmountField
-        service={service}
-        amount={amount}
-        setAmount={setAmount}
-        currency={currency}
-        setCurrency={setCurrency}
-        error={show("amount")}
-      />
-      <button type="submit" className="ip-btn bp-submit">
-        Review
+
+      <button type="submit" className="ip-btn bp-submit" disabled={busy}>
+        {busy ? "Checking…" : "Continue"}
       </button>
     </form>
   );
 }
 
-function Review({ order, onBack }) {
-  const service = SERVICES.find((s) => s.id === order.service);
+/* ---------------- step 2: confirm (after AUTH) ---------------- */
+
+function Confirm({ quote, product, demo, onPaid, onBack }) {
+  const partPay = product.authAmountMandated === false;
+  const [amount, setAmount] = useState(partPay && quote.total != null ? String(quote.total) : "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const total = partPay && amount ? Number(amount) : quote.total;
+
+  const payDemo = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const q = partPay && amount ? `?amount=${encodeURIComponent(amount)}` : "";
+      onPaid(await call(`/demo/pay/${quote.reference}${q}`, { method: "POST" }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const rows = [
+    ["Name", quote.memberName],
+    ["Address", quote.memberAddress],
+    ...Object.entries(quote.accountDetails || {}),
+    ...Object.entries(quote.balances || {}),
+    quote.accountBalance != null ? ["Amount owing", money(quote.accountBalance, quote.currency)] : null,
+    ...quote.products.map((p) => [
+      p.quantity > 1 ? `${p.name} × ${p.quantity}` : p.name,
+      money(p.price, quote.currency),
+    ]),
+  ].filter((r) => r && r[1]);
+
   return (
     <div className="bp-review" aria-live="polite">
-      <h2>
-        {service.icon} {service.name}
-      </h2>
+      <h2>Please confirm</h2>
+      <p className="bp-hint">Check that these details are right before you pay.</p>
       <dl>
-        {order.details.map(([k, v]) => (
-          <div key={k}>
+        {rows.map(([k, v], i) => (
+          <div key={`${k}-${i}`}>
             <dt>{k}</dt>
             <dd>{v}</dd>
           </div>
         ))}
         <div className="bp-total">
           <dt>You pay</dt>
-          <dd>{money(order.amount, order.currency)}</dd>
+          <dd>{money(total, quote.currency)}</dd>
         </div>
       </dl>
-      {PAYMENTS_LIVE ? (
-        <button type="button" className="ip-btn bp-submit">
-          Pay with Paynow
+      {partPay && (
+        <Field label="How much would you like to pay?" hint="You can pay part of the amount owing.">
+          <input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
+        </Field>
+      )}
+      <Notice text={error} />
+      {demo ? (
+        <button type="button" className="ip-btn bp-submit" disabled={busy} onClick={payDemo}>
+          {busy ? "Paying…" : "Pay (demo, no real money)"}
         </button>
       ) : (
         <p className="bp-soon">
-          🔒 Payments open soon. We are connecting Paynow so you can pay with EcoCash, OneMoney or
-          card. Nothing has been charged.
+          🔒 Payments open soon. We are connecting Paynow so you can pay with EcoCash, OneMoney or card.
+          Nothing has been charged.
         </p>
       )}
       <button type="button" className="ip-link" onClick={onBack}>
@@ -260,53 +311,324 @@ function Review({ order, onBack }) {
   );
 }
 
-// ---- page ----
+/* ---------------- step 3: result ---------------- */
+
+function Result({ result: first, onDone }) {
+  const [result, setResult] = useState(first);
+  const [busy, setBusy] = useState(false);
+  const refresh = async () => {
+    setBusy(true);
+    try {
+      setResult(await call(`/sales/${result.reference}`));
+    } catch {
+      /* keep the last answer */
+    } finally {
+      setBusy(false);
+    }
+  };
+  const ok = result.state === "delivered";
+
+  return (
+    <div className="bp-review" aria-live="polite">
+      <h2>{ok ? "✅ Payment successful" : result.state === "pending" ? "⏳ Still processing" : "Payment not completed"}</h2>
+      {!ok && <Notice text={result.message} kind={result.state === "pending" ? "info" : "error"} />}
+      {result.refundCustomer && <p className="bp-hint">Your money will be refunded.</p>}
+
+      {result.vouchers.map((v, i) => (
+        <div key={i} className="bp-voucher">
+          <span className="bp-hint">{v.product}</span>
+          <strong>{v.code || v.pin}</strong>
+          {v.serial && <span className="bp-hint">Serial {v.serial}</span>}
+          {(v.code || v.pin) && (
+            <button
+              type="button"
+              className="ip-link"
+              onClick={() => navigator.clipboard?.writeText(String(v.code || v.pin))}
+            >
+              Copy
+            </button>
+          )}
+        </div>
+      ))}
+
+      {Object.keys(result.details || {}).length > 0 && (
+        <dl>
+          {Object.entries(result.details).map(([k, v]) => (
+            <div key={k}>
+              <dt>{k}</dt>
+              <dd>{v}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      {/* BillPay: each receipt and each SMS on its own, never combined */}
+      {result.receipts.map((html, i) => (
+        <figure key={i} className="bp-receipt">
+          <figcaption>Receipt {result.receipts.length > 1 ? i + 1 : ""}</figcaption>
+          <iframe title={`Receipt ${i + 1}`} sandbox="allow-modals" srcDoc={html} />
+        </figure>
+      ))}
+      {result.smses.map((sms, i) => (
+        <p key={i} className="bp-sms">
+          💬 {sms}
+        </p>
+      ))}
+
+      {result.billerReference && <p className="bp-hint">Reference: {result.billerReference}</p>}
+      {result.state === "pending" && (
+        <button type="button" className="ip-btn ip-btn--ghost" disabled={busy} onClick={refresh}>
+          {busy ? "Checking…" : "Check again"}
+        </button>
+      )}
+      <button type="button" className="ip-btn bp-submit" onClick={onDone}>
+        Pay another bill
+      </button>
+    </div>
+  );
+}
+
+/* ---------------- the sheet (slides up, as in bus booking) ---------------- */
+
+function Sheet({ title, subtitle, icon, onClose, children }) {
+  const [closing, setClosing] = useState(false);
+  const close = useCallback(() => {
+    setClosing(true);
+    window.setTimeout(onClose, 240);
+  }, [onClose]);
+
+  useEffect(() => {
+    const before = document.body.style.overflow;
+    document.body.style.overflow = "hidden"; // the page behind stays still
+    const onKey = (e) => e.key === "Escape" && close();
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = before;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [close]);
+
+  return (
+    <div className={`bp-sheet-root${closing ? " is-closing" : ""}`}>
+      <div className="bp-sheet-backdrop" onClick={close} />
+      <div className="bp-sheet" role="dialog" aria-modal="true" aria-labelledby="bp-sheet-title">
+        <div className="bp-sheet-head">
+          <button type="button" className="bp-sheet-close" onClick={close} aria-label="Close">
+            ✕
+          </button>
+          {icon}
+          <div className="bp-sheet-title">
+            <h2 id="bp-sheet-title">{title}</h2>
+            {subtitle && <p>{subtitle}</p>}
+          </div>
+        </div>
+        <div className="bp-sheet-body">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- page ---------------- */
+
+const POPULAR_GROUPS = ["airtime", "electricity", "tv"];
 
 export default function BillsPayments() {
-  const [service, setService] = useState("airtime");
-  const [order, setOrder] = useState(null);
+  const [catalogue, setCatalogue] = useState(null);
+  const [error, setError] = useState("");
+  const [groupId, setGroupId] = useState("");
+  const [closingPanel, setClosingPanel] = useState(false);
+  const [origin, setOrigin] = useState({ x: "50%", y: "0px" });
+  const [query, setQuery] = useState("");
+  const [biller, setBiller] = useState(null);
+  const [quote, setQuote] = useState(null);
+  const [result, setResult] = useState(null);
+  const stackRef = useRef(null);
+
+  useEffect(() => {
+    call("/catalogue").then(setCatalogue).catch((e) => setError(e.message));
+  }, []);
+
+  const groups = catalogue?.groups || [];
+  const groupOf = (b) => groups.find((g) => g.billers.some((x) => x.code === b.code))?.id || "other";
+  const groupName = (b) => groups.find((g) => g.id === groupOf(b))?.name || "";
+  const q = query.trim().toLowerCase();
+  const found = q
+    ? groups.flatMap((g) => g.billers.filter((b) => `${b.name} ${b.description}`.toLowerCase().includes(q)))
+    : [];
+  const group = groups.find((g) => g.id === groupId);
+  const popular = POPULAR_GROUPS.flatMap((id) => groups.find((g) => g.id === id)?.billers.slice(0, 2) || []);
+
+  // A chip grows its billers out of itself and covers the chips; ✕ shrinks it back.
+  const pickGroup = (id, e) => {
+    if (id === groupId) return closePanel();
+    const box = stackRef.current?.getBoundingClientRect();
+    const r = e.currentTarget.getBoundingClientRect();
+    if (box) setOrigin({ x: `${r.left + r.width / 2 - box.left}px`, y: `${r.top + r.height / 2 - box.top}px` });
+    setClosingPanel(false);
+    setGroupId(id);
+    window.requestAnimationFrame(() => stackRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+  };
+  const closePanel = () => {
+    setClosingPanel(true);
+    window.setTimeout(() => {
+      setGroupId("");
+      setClosingPanel(false);
+    }, 200);
+  };
+
+  const openBiller = (b) => {
+    setBiller(b);
+    setQuote(null);
+    setResult(null);
+  };
+  const closeSheet = () => {
+    setBiller(null);
+    setQuote(null);
+    setResult(null);
+  };
+
+  const step = result ? "Done" : quote ? "Confirm and pay" : "Your details";
 
   return (
     <div className="ip-page bp-page">
       <section className="ip-hero">
         <div className="ip-shell">
           <span className="ip-eyebrow">Bills &amp; airtime</span>
-          <h1>Pay bills and buy airtime in seconds.</h1>
-          <p>Airtime for any network, ZESA tokens and DStv, paid securely through Paynow.</p>
+          <h1>Pay your bills in one place.</h1>
+          <p>Airtime, ZESA, DStv, internet, council rates, insurance, school fees and more, through Paynow.</p>
+          <label className="ip-search">
+            <span className="ip-visually-hidden">Search billers</span>
+            <input
+              type="search"
+              placeholder="Search, e.g. ZESA, DStv, council"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
         </div>
       </section>
 
-      <section className="ip-shell bp-body">
-        <div className="bp-services" role="tablist" aria-label="What would you like to pay?">
-          {SERVICES.map((s) => (
+      <section className="ip-shell ip-browse bp-body">
+        {catalogue?.demo && <p className="bp-demo">Demo mode: test billers only, no real payments.</p>}
+        <Notice text={error} />
+        {!catalogue && !error && <p className="ip-muted">Loading bills…</p>}
+        {catalogue && !catalogue.available && (
+          <p className="bp-soon">🔒 Bill payments open soon. We are connecting Paynow BillPay.</p>
+        )}
+
+        {q ? (
+          <BillerList title={`Results for “${query.trim()}”`} billers={found} groupOf={groupOf} onPick={openBiller} />
+        ) : (
+          groups.length > 0 && (
+            <>
+              <div className={`ip-stack${groupId && !closingPanel ? " is-open" : ""}`} ref={stackRef}>
+                <div
+                  className="ip-chips"
+                  role="tablist"
+                  aria-label="Types of bills"
+                  inert={groupId ? "" : undefined}
+                  aria-hidden={groupId ? true : undefined}
+                >
+                  {groups.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      className={g.id === groupId ? "is-active" : ""}
+                      onClick={(e) => pickGroup(g.id, e)}
+                    >
+                      {ICONS[g.id]} {g.name}
+                    </button>
+                  ))}
+                </div>
+                {group && (
+                  <div
+                    key={group.id}
+                    className={`ip-area${closingPanel ? " is-closing" : ""}`}
+                    style={{ "--ox": origin.x, "--oy": origin.y }}
+                    role="region"
+                    aria-labelledby="bp-area-title"
+                  >
+                    <div className="ip-area-head">
+                      <div>
+                        <h2 id="bp-area-title" className="ip-section-title">
+                          {ICONS[group.id]} {group.name}
+                        </h2>
+                        <span className="ip-muted">
+                          {group.billers.length} {group.billers.length === 1 ? "biller" : "billers"}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="ip-area-close"
+                        onClick={closePanel}
+                        aria-label="Close and go back to all bills"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <BillerList billers={group.billers} groupOf={() => group.id} onPick={openBiller} />
+                  </div>
+                )}
+              </div>
+              {!groupId && popular.length > 0 && (
+                <BillerList title="Popular" billers={popular} groupOf={groupOf} onPick={openBiller} />
+              )}
+            </>
+          )
+        )}
+      </section>
+
+      {biller && (
+        <Sheet
+          title={biller.name}
+          subtitle={`${groupName(biller)} · ${step}`}
+          icon={<BillerIcon biller={biller} group={groupOf(biller)} />}
+          onClose={closeSheet}
+        >
+          <div className="bp-sheet-step" key={result ? "r" : quote ? "q" : "f"}>
+            {result ? (
+              <Result result={result} onDone={closeSheet} />
+            ) : quote ? (
+              <Confirm
+                quote={quote}
+                product={quote.product}
+                demo={Boolean(catalogue?.demo)}
+                onPaid={setResult}
+                onBack={() => setQuote(null)}
+              />
+            ) : (
+              <BillerForm biller={biller} onQuoted={(qq, p) => setQuote({ ...qq, product: p })} />
+            )}
+          </div>
+        </Sheet>
+      )}
+    </div>
+  );
+}
+
+function BillerList({ title, billers, groupOf, onPick }) {
+  return (
+    <>
+      {title && <h2 className="ip-section-title">{title}</h2>}
+      {!billers.length ? (
+        <p className="ip-muted">Nothing found. Try another word.</p>
+      ) : (
+        <div className="bp-billers">
+          {billers.map((b, i) => (
             <button
-              key={s.id}
+              key={b.code}
               type="button"
-              role="tab"
-              aria-selected={service === s.id}
-              className={`bp-service${service === s.id ? " is-active" : ""}`}
-              onClick={() => {
-                setService(s.id);
-                setOrder(null);
-              }}
+              className="bp-service"
+              style={{ "--i": Math.min(i, 12) }}
+              onClick={() => onPick(b)}
             >
-              <span className="bp-service-icon" aria-hidden="true">
-                {s.icon}
-              </span>
-              <strong>{s.name}</strong>
-              <span>{s.blurb}</span>
+              <BillerIcon biller={b} group={groupOf(b)} />
+              <strong>{b.name}</strong>
+              <span>{b.products.length === 1 ? b.products[0].name : `${b.products.length} options`}</span>
             </button>
           ))}
         </div>
-
-        <div className="bp-card" key={`${service}-${order ? "review" : "form"}`}>
-          {order ? (
-            <Review order={order} onBack={() => setOrder(null)} />
-          ) : (
-            <ServiceForm service={service} onReview={setOrder} />
-          )}
-        </div>
-      </section>
-    </div>
+      )}
+    </>
   );
 }
