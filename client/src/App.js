@@ -192,6 +192,7 @@ function App() {
           <Route path="/interviews" element={<PublicHome />} />
           <Route path="/bus-booking" element={<PublicHome />} />
           <Route path="/bills" element={<PublicHome />} />
+          <Route path="/bills/pay/:code" element={<PublicHome />} />
           <Route
             path="/register"
             element={

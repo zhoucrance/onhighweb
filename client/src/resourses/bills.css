@@ -87,36 +87,78 @@
 }
 @media (prefers-reduced-motion: reduce) { .bp-group { animation: none; } }
 
-/* ---- biller sheet: slides up like the bus booking sheet (full screen on phones) ---- */
-.bp-sheet-root { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: flex-end; justify-content: center; }
-.bp-sheet-backdrop { position: absolute; inset: 0; background: rgba(7,26,77,.55); backdrop-filter: blur(3px); animation: bp-fade .24s ease both; }
-.bp-sheet-root.is-closing .bp-sheet-backdrop { animation: bp-fade .24s ease both reverse; }
-.bp-sheet { position: relative; z-index: 1; display: flex; flex-direction: column; width: 100%; height: 100vh; height: 100dvh; background: var(--ip-white); animation: bp-up .3s cubic-bezier(.2,.9,.28,1) both; overflow: hidden; }
-.bp-sheet-root.is-closing .bp-sheet { animation: bp-down .24s ease both; }
-.bp-sheet-head { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px; border-bottom: 1px solid var(--ip-border); }
-.ip-page .bp-sheet-close { flex: none; display: grid; place-items: center; width: var(--ip-tap); height: var(--ip-tap); border: 1px solid var(--ip-border) !important; border-radius: 50% !important; background: var(--ip-white); color: var(--ip-ink); font-size: 18px; cursor: pointer; transition: background .15s ease, transform .15s ease; }
-.ip-page .bp-sheet-close:hover { background: var(--ip-primary-light); transform: rotate(90deg); }
-.bp-sheet-head .bp-logo, .bp-sheet-head .bp-service-icon { flex: none; grid-row: auto; width: 40px; height: 40px; }
-.bp-sheet-title { min-width: 0; }
-.bp-sheet-title h2 { font-size: 17px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bp-sheet-title p { margin-top: 2px !important; color: var(--ip-muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bp-sheet-body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
-.bp-sheet-step { animation: bp-in .26s ease both; }
-/* the main button stays in reach at the bottom of the sheet */
-.bp-sheet .bp-form > .bp-submit, .bp-sheet .bp-review > .bp-submit { position: sticky; bottom: 0; box-shadow: 0 -8px 18px rgba(255,255,255,.9); }
-
 .ip-area .bp-service { animation: ip-topic-in .28s ease-out both; animation-delay: calc(var(--i, 0) * 30ms + 120ms); }
 .bp-page .ip-chips { margin-bottom: 4px; }
+.bp-count { display: inline-grid; place-items: center; min-width: 22px; height: 20px; margin-left: 4px; padding: 0 6px; border-radius: 999px; background: var(--ip-surface); color: var(--ip-muted); font-size: 11px; font-weight: 700; }
+.bp-filter { width: 100%; min-height: 44px; margin-bottom: 12px; padding: 10px 14px; border: 1px solid var(--ip-border); border-radius: 12px; background: var(--ip-white); font-size: 16px; }
+.bp-filter:focus { outline: 3px solid rgba(18,143,202,.25); border-color: var(--ip-primary); }
+.bp-sub + .bp-sub { margin-top: 18px; }
+.bp-sub-title { margin: 0 0 10px !important; color: var(--ip-muted); font-size: 12px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+.ip-page .bp-quick button.is-active { background: var(--ip-primary); border-style: solid; color: var(--ip-white); }
+
+/* ======== checkout page (/bills/pay/<code>), like the bus booking flow ======== */
+.bp-checkout { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; background: var(--ip-surface); }
+.bp-checkout-head { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px; background: var(--ip-white); border-bottom: 1px solid var(--ip-border); }
+.ip-page .bp-head-btn { flex: none; display: grid; place-items: center; width: var(--ip-tap); height: var(--ip-tap); border: 1px solid var(--ip-border) !important; border-radius: 50% !important; background: var(--ip-white); color: var(--ip-ink); font-size: 18px; cursor: pointer; transition: background .15s ease, transform .15s ease; }
+.ip-page .bp-head-btn:hover { background: var(--ip-primary-light); transform: rotate(90deg); }
+.ip-page .bp-head-space { border: 0 !important; visibility: hidden; }
+.bp-checkout-head .bp-logo, .bp-checkout-head .bp-service-icon { flex: none; grid-row: auto; width: 40px; height: 40px; }
+.bp-checkout-title { min-width: 0; }
+.bp-checkout-title h1 { font-size: 17px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bp-checkout-title p { margin-top: 2px !important; color: var(--ip-muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* progress: 1 Details  2 Confirm  3 Pay  4 Done */
+.bp-steps { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0; padding: 12px 12px 10px; list-style: none; background: var(--ip-white); border-bottom: 1px solid var(--ip-border); counter-reset: none; }
+.bp-steps li { position: relative; display: grid; justify-items: center; gap: 4px; color: var(--ip-muted); font-size: 12px; font-weight: 600; }
+.bp-steps li + li::before { content: ""; position: absolute; top: 13px; right: 50%; width: 100%; height: 2px; background: var(--ip-border); z-index: 0; transition: background .3s ease; }
+.bp-steps li.is-done + li::before, .bp-steps li.is-done::before { background: var(--ip-primary); }
+.bp-step-dot { position: relative; z-index: 1; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--ip-border); background: var(--ip-white); font-size: 13px; font-weight: 800; transition: background .25s ease, border-color .25s ease, color .25s ease, transform .25s ease; }
+.bp-steps li.is-current { color: var(--ip-ink); }
+.bp-steps li.is-current .bp-step-dot { border-color: var(--ip-primary); color: var(--ip-primary); transform: scale(1.1); box-shadow: 0 0 0 4px var(--ip-primary-light); }
+.bp-steps li.is-done .bp-step-dot { border-color: var(--ip-primary); background: var(--ip-primary); color: var(--ip-white); }
+
+.bp-checkout-body { flex: 1 1 auto; width: 100%; max-width: 640px; margin: 0 auto; padding: 16px 16px 110px; }
+.bp-step-card { margin-top: 0; display: grid; gap: 14px; animation: bp-in .28s cubic-bezier(.2,.9,.3,1.1) both; }
+.bp-step-title { font-size: 19px; }
+.bp-step-title:empty { display: none; }
+
+/* bottom bar: total + next step, always in reach */
+.bp-checkout-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; align-items: center; gap: 12px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); background: rgba(255,255,255,.97); border-top: 1px solid var(--ip-border); box-shadow: 0 -10px 30px rgba(7,27,61,.08); backdrop-filter: blur(8px); }
+.bp-bar-summary { flex: 1 1 auto; min-width: 0; display: grid; }
+.bp-bar-summary span { color: var(--ip-muted); font-size: 12px; }
+.bp-bar-summary strong { font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bp-checkout-bar .ip-btn { flex: none; min-width: 132px; }
+.ip-page .bp-back-btn { flex: none; min-height: var(--ip-tap); }
+
+.bp-table { margin: 0; display: grid; border: 1px solid var(--ip-border); border-radius: 12px; overflow: hidden; }
+.bp-table > div { display: flex; justify-content: space-between; gap: 12px; padding: 12px 14px; }
+.bp-table > div + div { border-top: 1px solid var(--ip-border); }
+.bp-table dt { color: var(--ip-muted); }
+.bp-table dd { margin: 0; font-weight: 700; text-align: right; word-break: break-word; }
+.bp-amount-due { display: flex; justify-content: space-between; align-items: baseline; padding: 14px; border-radius: 14px; background: var(--ip-primary-light); }
+.bp-amount-due strong { font-size: 24px; }
+.bp-methods { display: grid; gap: 8px; }
+.bp-outcome { display: grid; justify-items: center; gap: 6px; padding: 8px 0 4px; text-align: center; }
+.bp-outcome > span { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: #e7f8ee; color: #138a40; font-size: 30px; font-weight: 800; animation: bp-pop .4s cubic-bezier(.2,.9,.3,1.4) both; }
+.bp-outcome.is-pending > span { background: #fff8e6; color: #7a5300; }
+.bp-outcome.is-failed > span { background: var(--ip-danger-bg); color: var(--ip-danger); }
+.bp-outcome h2 { font-size: 22px; }
+.bp-outcome p { color: var(--ip-text); }
+
+/* "Cancel this payment?" */
+.bp-ask-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(7,27,61,.45); animation: bp-fade .2s ease both; }
+.bp-ask { width: 100%; max-width: 360px; display: grid; gap: 10px; padding: 22px 18px 18px; border-radius: 20px; background: var(--ip-white); text-align: center; box-shadow: 0 24px 60px rgba(7,27,61,.35); animation: bp-pop .28s cubic-bezier(.2,.9,.3,1.2) both; }
+.bp-ask h2 { font-size: 20px; }
+.bp-ask p { color: var(--ip-text); margin-bottom: 6px !important; }
 
 @keyframes bp-fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes bp-up { from { opacity: .6; transform: translateY(100%); } to { opacity: 1; transform: none; } }
-@keyframes bp-down { to { opacity: .4; transform: translateY(100%); } }
+@keyframes bp-pop { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .bp-sheet, .bp-sheet-backdrop, .bp-sheet-step, .ip-area .bp-service { animation: none; }
+  .ip-area .bp-service, .bp-step-card, .bp-outcome > span, .bp-ask, .bp-ask-backdrop { animation: none; }
 }
-
-/* bigger screens: a sheet with rounded top instead of the full screen */
 @media (min-width: 640px) {
-  .bp-sheet { width: min(560px, 100%); height: auto; max-height: 90vh; border-radius: 22px 22px 0 0; }
-  .bp-sheet .bp-submit { width: 100%; }
+  .bp-steps { max-width: 640px; width: 100%; margin: 0 auto; border-bottom: 0; background: none; padding-top: 16px; }
+  .bp-checkout-bar { justify-content: center; }
+  .bp-checkout-bar > * { max-width: 640px; }
+  .bp-checkout-body .bp-card { max-width: none; }
 }

@@ -7,6 +7,7 @@ import "../resourses/interview-practice.css";
 const InterviewPractice = lazy(() => import("./InterviewPractice"));
 const PublicBusBooking = lazy(() => import("./PublicBusBooking"));
 const BillsPayments = lazy(() => import("./BillsPayments"));
+const BillCheckout = lazy(() => import("./BillsPayments").then((m) => ({ default: m.BillCheckout })));
 
 // OnHighTech Solutions on WhatsApp: one number for every solution (0781576825).
 // Never the bus booking bot. Typing "interviews" opens the interview practice
@@ -94,7 +95,8 @@ function BusComingSoon() {
 //   /             -> Interviews (or Bus booking when coming back from a Tenda payment)
 //   /interviews   -> Interviews
 //   /bus-booking  -> Bus booking
-//   /bills        -> Bills & airtime (airtime, ZESA, DStv through Paynow)
+//   /bills        -> Bills & airtime (every Paynow BillPay biller, grouped)
+//   /bills/pay/X  -> checkout for biller X, full screen (Details -> Confirm -> Pay -> Done)
 // /tenda still opens the bus booking page on its own.
 export default function PublicHome() {
   const { pathname, search } = useLocation();
@@ -113,11 +115,15 @@ export default function PublicHome() {
   // Tapping the logo always lands on a fresh home page (closes an open topic too).
   const [homeVisit, setHomeVisit] = useState(0);
   const whatsapp = whatsappLink(tab);
+  const checkout = pathname.startsWith("/bills/pay/")
+    ? decodeURIComponent(pathname.slice("/bills/pay/".length).split("/")[0])
+    : "";
 
   return (
     <div className={`ph-page${asking ? " is-asking" : ""}`}>
       {asking && <ChannelChoice onWeb={() => setChosen(true)} whatsapp={whatsapp} />}
       <div className="ph-behind" inert={asking ? "" : undefined} aria-hidden={asking || undefined}>
+      {!checkout && (
       <nav className="ph-tabs" aria-label="Services">
         <div className="ph-tabs-inner">
           <Link to="/" className="ph-brand" onClick={() => setHomeVisit((n) => n + 1)} aria-label="OnHighTech Solutions home">
@@ -142,8 +148,11 @@ export default function PublicHome() {
           </a>
         </div>
       </nav>
+      )}
       <Suspense fallback={<Loader />}>
-        {tab === "bills" ? (
+        {checkout ? (
+          <BillCheckout key={checkout} code={checkout} />
+        ) : tab === "bills" ? (
           <BillsPayments />
         ) : tab === "bus" ? (
           // BUS LIVE: replace the next line with  <PublicBusBooking />
