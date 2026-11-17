@@ -103,7 +103,7 @@
 .ip-page .bp-head-btn:hover { background: var(--ip-primary-light); transform: rotate(90deg); }
 .ip-page .bp-head-space { border: 0 !important; visibility: hidden; }
 .bp-checkout-head .bp-logo, .bp-checkout-head .bp-service-icon { flex: none; grid-row: auto; width: 40px; height: 40px; }
-.bp-checkout-title { min-width: 0; }
+.bp-checkout-title { flex: 1 1 auto; min-width: 0; }
 .bp-checkout-title h1 { font-size: 17px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bp-checkout-title p { margin-top: 2px !important; color: var(--ip-muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -117,18 +117,22 @@
 .bp-steps li.is-current .bp-step-dot { border-color: var(--ip-primary); color: var(--ip-primary); transform: scale(1.1); box-shadow: 0 0 0 4px var(--ip-primary-light); }
 .bp-steps li.is-done .bp-step-dot { border-color: var(--ip-primary); background: var(--ip-primary); color: var(--ip-white); }
 
-.bp-checkout-body { flex: 1 1 auto; width: 100%; max-width: 640px; margin: 0 auto; padding: 16px 16px 110px; }
+.bp-checkout-body { flex: 1 1 auto; width: 100%; max-width: 640px; margin: 0 auto; padding: 16px 16px 170px; }
 .bp-step-card { margin-top: 0; display: grid; gap: 14px; animation: bp-in .28s cubic-bezier(.2,.9,.3,1.1) both; }
 .bp-step-title { font-size: 19px; }
 .bp-step-title:empty { display: none; }
 
 /* bottom bar: total + next step, always in reach */
-.bp-checkout-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; align-items: center; gap: 12px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); background: rgba(255,255,255,.97); border-top: 1px solid var(--ip-border); box-shadow: 0 -10px 30px rgba(7,27,61,.08); backdrop-filter: blur(8px); }
-.bp-bar-summary { flex: 1 1 auto; min-width: 0; display: grid; }
-.bp-bar-summary span { color: var(--ip-muted); font-size: 12px; }
-.bp-bar-summary strong { font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bp-checkout-bar .ip-btn { flex: none; min-width: 132px; }
-.ip-page .bp-back-btn { flex: none; min-height: var(--ip-tap); }
+/* phones: the total on its own line, then [ ‹ Back ][ Main button ] full width */
+.bp-checkout-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: grid; gap: 10px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); background: rgba(255,255,255,.97); border-top: 1px solid var(--ip-border); box-shadow: 0 -10px 30px rgba(7,27,61,.08); backdrop-filter: blur(8px); }
+.bp-bar-summary { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; min-width: 0; }
+.bp-bar-summary span { color: var(--ip-muted); font-size: 14px; font-weight: 600; }
+.bp-bar-summary strong { font-size: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bp-bar-actions { display: flex; gap: 10px; }
+.bp-bar-actions .ip-btn { flex: 1 1 auto; min-height: 52px; font-size: 16px; }
+.ip-page .bp-bar-actions .bp-back-btn { flex: 0 0 34%; border: 2px solid var(--ip-primary) !important; background: var(--ip-white); color: var(--ip-primary); font-weight: 800; }
+.ip-page .bp-bar-actions .bp-back-btn:hover { background: var(--ip-primary-light); color: var(--ip-primary-dark); }
+.ip-page .bp-bar-actions .bp-back-btn:active, .bp-bar-actions .ip-btn:active { transform: scale(.98); }
 
 .bp-table { margin: 0; display: grid; border: 1px solid var(--ip-border); border-radius: 12px; overflow: hidden; }
 .bp-table > div { display: flex; justify-content: space-between; gap: 12px; padding: 12px 14px; }
@@ -158,7 +162,13 @@
 }
 @media (min-width: 640px) {
   .bp-steps { max-width: 640px; width: 100%; margin: 0 auto; border-bottom: 0; background: none; padding-top: 16px; }
-  .bp-checkout-bar { justify-content: center; }
-  .bp-checkout-bar > * { max-width: 640px; }
+  /* wider screens: one row, total on the left, buttons on the right */
+  .bp-checkout-bar { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding-left: max(16px, calc((100% - 640px) / 2)); padding-right: max(16px, calc((100% - 640px) / 2)); }
+  .bp-bar-summary { flex-direction: column; gap: 0; }
+  .bp-bar-summary span { font-size: 12px; }
+  .bp-bar-actions .ip-btn { min-width: 150px; }
+  .ip-page .bp-bar-actions .bp-back-btn { flex: 0 0 auto; min-width: 110px; }
+  .bp-checkout-body { padding-bottom: 120px; }
+  .bp-checkout-head { padding-left: max(16px, calc((100% - 640px) / 2)); padding-right: max(16px, calc((100% - 640px) / 2)); }
   .bp-checkout-body .bp-card { max-width: none; }
 }

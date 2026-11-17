@@ -722,13 +722,6 @@ export function BillCheckout({ code }) {
   return (
     <div className="ip-page bp-page bp-checkout" ref={top}>
       <header className="bp-checkout-head">
-        {step < 3 ? (
-          <button type="button" className="bp-head-btn" onClick={cancel} aria-label="Cancel and go back to bills">
-            ✕
-          </button>
-        ) : (
-          <span className="bp-head-btn bp-head-space" aria-hidden="true" />
-        )}
         {biller && <BillerIcon biller={biller} group={group.id} />}
         <div className="bp-checkout-title">
           <h1>{biller?.name || "Pay a bill"}</h1>
@@ -740,6 +733,11 @@ export function BillCheckout({ code }) {
             </p>
           )}
         </div>
+        {step < 3 && (
+          <button type="button" className="bp-head-btn" onClick={cancel} aria-label="Cancel and go back to bills">
+            ✕
+          </button>
+        )}
       </header>
       {biller && <Stepper step={step} />}
 
@@ -793,16 +791,20 @@ export function BillCheckout({ code }) {
 
       {biller && (
         <footer className="bp-checkout-bar">
-          {step === 1 || step === 2 ? (
-            <button type="button" className="ip-link bp-back-btn" onClick={() => setStep(step - 1)}>
-              ← Back
-            </button>
-          ) : null}
-          <div className="bp-bar-summary">
-            <span>{step === 3 ? "" : "Total"}</span>
-            <strong>{summary}</strong>
+          {step < 3 && (
+            <div className="bp-bar-summary">
+              <span>Total</span>
+              <strong>{summary}</strong>
+            </div>
+          )}
+          <div className="bp-bar-actions">
+            {(step === 1 || step === 2) && (
+              <button type="button" className="ip-btn ip-btn--ghost bp-back-btn" onClick={() => setStep(step - 1)}>
+                ‹ Back
+              </button>
+            )}
+            {action}
           </div>
-          {action}
         </footer>
       )}
 
