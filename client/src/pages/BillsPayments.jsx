@@ -351,6 +351,7 @@ function DetailsStep({ biller, values, setValues, tried, errors }) {
                 className={`bp-product${p.code === product.code ? " is-active" : ""}`}
                 onClick={() => setValues((v) => ({ ...v, productCode: p.code }))}
               >
+                <i className="bp-radio" aria-hidden="true" />
                 <strong>{p.name}</strong>
                 {p.price != null && <span>{money(p.price, p.requiresForex ? "USD" : "ZWG")}</span>}
               </button>
@@ -475,9 +476,9 @@ function ConfirmStep({ quote, partPay, payAmount, setPayAmount }) {
 // Step 3: how the customer pays (Paynow). Live payment is switched on with the Paynow keys.
 function PayStep({ total, currency, method, setMethod, phone, setPhone, demo }) {
   const methods = [
-    ["ecocash", "EcoCash"],
-    ["onemoney", "OneMoney"],
-    ["card", "Visa / Mastercard"],
+    ["ecocash", "EcoCash", "📱", "Approve on your phone"],
+    ["onemoney", "OneMoney", "📱", "Approve on your phone"],
+    ["card", "Visa / Mastercard", "💳", "Pay on Paynow's secure page"],
   ];
   return (
     <>
@@ -488,16 +489,23 @@ function PayStep({ total, currency, method, setMethod, phone, setPhone, demo }) 
       <div className="bp-field">
         <span className="bp-label">Pay with</span>
         <div className="bp-methods" role="radiogroup" aria-label="Pay with">
-          {methods.map(([id, name]) => (
+          {methods.map(([id, name, icon, note]) => (
             <button
               key={id}
               type="button"
               role="radio"
               aria-checked={method === id}
-              className={`bp-product${method === id ? " is-active" : ""}`}
+              className={`bp-product bp-method${method === id ? " is-active" : ""}`}
               onClick={() => setMethod(id)}
             >
-              <strong>{name}</strong>
+              <i className="bp-radio" aria-hidden="true" />
+              <span className="bp-method-icon" aria-hidden="true">
+                {icon}
+              </span>
+              <strong>
+                {name}
+                <small>{note}</small>
+              </strong>
             </button>
           ))}
         </div>
@@ -719,6 +727,17 @@ export function BillCheckout({ code }) {
     }
   }
 
+  const actions = (
+    <>
+      {(step === 1 || step === 2) && (
+        <button type="button" className="ip-btn ip-btn--ghost bp-back-btn" onClick={() => setStep(step - 1)}>
+          ‹ Back
+        </button>
+      )}
+      {action}
+    </>
+  );
+
   return (
     <div className="ip-page bp-page bp-checkout" ref={top}>
       <header className="bp-checkout-head">
@@ -754,6 +773,7 @@ export function BillCheckout({ code }) {
           </div>
         )}
         {biller && (
+          <div className="bp-checkout-grid">
           <div className="bp-card bp-step-card" key={step}>
             <h2 className="bp-step-title">
               {["Your details", "Confirm your details", "Payment", ""][step]}
@@ -786,6 +806,41 @@ export function BillCheckout({ code }) {
             )}
             {step === 3 && result && <DoneStep result={result} setResult={setResult} />}
           </div>
+
+          {/* computers: an order summary beside the form, with the buttons */}
+          <aside className="bp-aside" aria-label="Order summary">
+            <h2>Order summary</h2>
+            <div className="bp-aside-biller">
+              <BillerIcon biller={biller} group={group.id} />
+              <div>
+                <strong>{biller.name}</strong>
+                <span>{group.name}</span>
+              </div>
+            </div>
+            <dl className="bp-aside-rows">
+              {(quote ? quote.products.map((p) => p.name) : [checked.product.name]).map((n) => (
+                <div key={n}>
+                  <dt>Item</dt>
+                  <dd>{n}</dd>
+                </div>
+              ))}
+              {(quote?.memberName || values.member.trim()) && (
+                <div>
+                  <dt>{quote?.memberName ? "Account holder" : biller.memberLabel}</dt>
+                  <dd>{quote?.memberName || values.member.trim()}</dd>
+                </div>
+              )}
+              {step < 3 && (
+                <div className="bp-aside-total">
+                  <dt>Total</dt>
+                  <dd>{summary}</dd>
+                </div>
+              )}
+            </dl>
+            <div className="bp-bar-actions">{actions}</div>
+            <p className="bp-secure">🔒 Secure payment through Paynow</p>
+          </aside>
+          </div>
         )}
       </main>
 
@@ -797,14 +852,7 @@ export function BillCheckout({ code }) {
               <strong>{summary}</strong>
             </div>
           )}
-          <div className="bp-bar-actions">
-            {(step === 1 || step === 2) && (
-              <button type="button" className="ip-btn ip-btn--ghost bp-back-btn" onClick={() => setStep(step - 1)}>
-                ‹ Back
-              </button>
-            )}
-            {action}
-          </div>
+          <div className="bp-bar-actions">{actions}</div>
         </footer>
       )}
 
