@@ -98,3 +98,10 @@
 @media (prefers-reduced-motion: reduce) {
   .ac-backdrop, .ac-dialog, .ph-account-menu { animation: none; }
 }
+
+/* email-first sign-up: the WhatsApp link is a separate, optional extra */
+.ac-label-row { display: flex; align-items: center; gap: 6px; }
+.ac-label-row .ac-optional { margin-left: 0; }
+.ac-form .ac-link-whatsapp { padding: 12px; border: 1px dashed var(--ip-border); border-radius: 14px; background: var(--ip-surface); }
+.ac-form .ac-link-whatsapp input { background: var(--ip-white); }
+.ac-lead strong { overflow-wrap: anywhere; }

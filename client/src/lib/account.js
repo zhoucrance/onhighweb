@@ -39,14 +39,23 @@ async function post(path, body) {
   }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new ApiError(typeof data.detail === "string" ? data.detail : "Something went wrong. Please try again.", response.status);
+    const detail = data.detail;
+    const message =
+      (typeof detail === "string" && detail) || detail?.message || "Something went wrong. Please try again.";
+    // e.g. {verify: true, email} when the email still needs its code
+    throw new ApiError(message, response.status, typeof detail === "object" && detail ? detail : {});
   }
-  setToken(data.token);
-  saveAccount(data.account);
+  if (data.token) {
+    // signed in (sign-up only emails a code: no token until the email is verified)
+    setToken(data.token);
+    saveAccount(data.account);
+  }
   return data;
 }
 
 export const signUp = (fields) => post("/signup", fields);
+export const verifyEmail = (email, code) => post("/verify", { email, code });
+export const resendCode = (email) => post("/resend", { email });
 export const signIn = (login, password) => post("/signin", { login, password });
 export const googleSignIn = (credential) => post("/google", { credential });
 export const resetPassword = (login, code, password) => post("/reset", { login, code, password });

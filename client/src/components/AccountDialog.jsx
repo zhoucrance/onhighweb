@@ -1,9 +1,20 @@
 import React, { useEffect, useRef, useState } from "react";
-import { accountConfig, forgotPassword, googleSignIn, resetPassword, signIn, signUp } from "../lib/account";
+import {
+  accountConfig,
+  forgotPassword,
+  googleSignIn,
+  resendCode,
+  resetPassword,
+  signIn,
+  signUp,
+  verifyEmail,
+} from "../lib/account";
 
-// Sign in / Create account / Forgot password, opened from anywhere with
-// openAccount(mode, onDone). Phones: full screen. Computers: a card in the middle.
-// "Continue with Google" shows once GOOGLE_CLIENT_ID is set on the careers bot.
+// Sign in / Create account / Verify email / Forgot password, opened from anywhere
+// with openAccount(mode, onDone). On the website the account is the EMAIL: it is
+// verified with an emailed code, and reset codes go to it. The WhatsApp number is
+// optional and only links the account to our WhatsApp chat.
+// Phones: full screen. Computers: a card in the middle.
 
 const EMPTY = { name: "", phone: "", email: "", password: "", login: "", code: "" };
 
@@ -63,11 +74,26 @@ function GoogleButton({ clientId, onCredential }) {
   );
 }
 
+const TITLES = {
+  signin: "Welcome back",
+  signup: "Create your account",
+  verify: "Check your email",
+  forgot: "Reset your password",
+  reset: "Enter your code",
+};
+const BUTTONS = {
+  signin: "Sign in",
+  signup: "Create account",
+  verify: "Verify email",
+  forgot: "Send code",
+  reset: "Set new password",
+};
+
 export default function AccountDialog() {
   const [open, setOpen] = useState(null); // {mode, onDone}
-  const [mode, setMode] = useState("signin"); // signin | signup | forgot | reset
-  const [signupWith, setSignupWith] = useState("phone"); // phone | email
+  const [mode, setMode] = useState("signin"); // signin | signup | verify | forgot | reset
   const [form, setForm] = useState(EMPTY);
+  const [verifyFor, setVerifyFor] = useState(""); // the email waiting for its code
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -99,7 +125,7 @@ export default function AccountDialog() {
       document.body.style.overflow = before;
       window.removeEventListener("keydown", onKey);
     };
-  }, [open, mode, signupWith]);
+  }, [open, mode]);
 
   if (!open) return null;
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -116,13 +142,22 @@ export default function AccountDialog() {
     done?.(r.account);
   };
 
+  const needsVerifying = (email, message) => {
+    setVerifyFor(email);
+    setForm((f) => ({ ...f, code: "" }));
+    setMode("verify");
+    setError("");
+    setInfo(message);
+  };
+
   const run = async (action) => {
     setBusy(true);
     setError("");
     try {
       await action();
     } catch (err) {
-      setError(err.message);
+      if (err.extra?.verify) needsVerifying(err.extra.email, err.message);
+      else setError(err.message);
     } finally {
       setBusy(false);
     }
@@ -131,21 +166,18 @@ export default function AccountDialog() {
   const submit = (e) => {
     e.preventDefault();
     if (mode === "signup") {
-      run(async () =>
-        finish(
-          await signUp({
-            name: form.name,
-            phone: signupWith === "phone" ? form.phone : form.phone,
-            email: form.email,
-            password: form.password,
-          })
-        )
-      );
+      run(async () => {
+        const r = await signUp({ name: form.name, email: form.email, phone: form.phone, password: form.password });
+        needsVerifying(r.email, r.message);
+      });
+    } else if (mode === "verify") {
+      run(async () => finish(await verifyEmail(verifyFor, form.code)));
     } else if (mode === "signin") {
       run(async () => finish(await signIn(form.login, form.password)));
     } else if (mode === "forgot") {
       run(async () => {
         setInfo(await forgotPassword(form.login));
+        setForm((f) => ({ ...f, code: "", password: "" }));
         setMode("reset");
       });
     } else {
@@ -153,18 +185,11 @@ export default function AccountDialog() {
     }
   };
 
-  const titles = {
-    signin: "Welcome back",
-    signup: "Create your account",
-    forgot: "Reset your password",
-    reset: "Enter your code",
-  };
-
   return (
     <div className="ac-backdrop" onClick={() => setOpen(null)}>
       <div className="ac-dialog" role="dialog" aria-modal="true" aria-labelledby="ac-title" onClick={(e) => e.stopPropagation()}>
         <div className="ac-head">
-          <h2 id="ac-title">{titles[mode]}</h2>
+          <h2 id="ac-title">{TITLES[mode]}</h2>
           <button type="button" className="ac-close" onClick={() => setOpen(null)} aria-label="Close">
             ✕
           </button>
@@ -207,57 +232,54 @@ export default function AccountDialog() {
                 Full name
                 <input ref={first} name="name" autoComplete="name" value={form.name} onChange={set("name")} />
               </label>
-              <div className="ac-choice" role="radiogroup" aria-label="Sign up with">
-                <span>Sign up with</span>
-                <div>
-                  {[
-                    ["phone", "WhatsApp number"],
-                    ["email", "Email"],
-                  ].map(([id, label]) => (
-                    <button key={id} type="button" role="radio" aria-checked={signupWith === id} onClick={() => setSignupWith(id)}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {signupWith === "phone" ? (
-                <>
-                  <label>
-                    WhatsApp number
-                    <input type="tel" inputMode="tel" autoComplete="tel" placeholder="0772123456" name="phone" value={form.phone} onChange={set("phone")} />
-                    <small>What you buy here also opens in our WhatsApp chat on this number.</small>
-                  </label>
-                  <label>
-                    Email <span className="ac-optional">optional</span>
-                    <input type="email" name="email" autoComplete="email" value={form.email} onChange={set("email")} />
-                  </label>
-                </>
-              ) : (
-                <>
-                  <label>
-                    Email
-                    <input type="email" name="email" autoComplete="email" placeholder="you@example.com" value={form.email} onChange={set("email")} />
-                  </label>
-                  <label>
-                    WhatsApp number <span className="ac-optional">optional</span>
-                    <input type="tel" inputMode="tel" autoComplete="tel" placeholder="0772123456" name="phone" value={form.phone} onChange={set("phone")} />
-                    <small>Add it to also open what you buy in our WhatsApp chat.</small>
-                  </label>
-                </>
-              )}
+              <label>
+                Email
+                <input type="email" name="email" autoComplete="email" placeholder="you@example.com" value={form.email} onChange={set("email")} />
+                <small>We will email you a code to confirm it.</small>
+              </label>
               <label htmlFor="ac-new-password">
                 Password
                 <PasswordInput id="ac-new-password" autoComplete="new-password" value={form.password} onChange={set("password")} />
                 <small>At least 8 characters.</small>
               </label>
+              <label className="ac-link-whatsapp">
+                <span className="ac-label-row">
+                  WhatsApp number <span className="ac-optional">optional</span>
+                </span>
+                <input type="tel" name="phone" inputMode="tel" autoComplete="tel" placeholder="0772123456" value={form.phone} onChange={set("phone")} />
+                <small>
+                  Only links your account to our WhatsApp chat, so what you buy here also opens there. It is not
+                  used to sign in or verify anything.
+                </small>
+              </label>
+            </>
+          )}
+
+          {mode === "verify" && (
+            <>
+              <p className="ac-lead">
+                Enter the 6-digit code we sent to <strong>{verifyFor}</strong>. Check your spam folder if you
+                cannot see it.
+              </p>
+              <label>
+                6-digit code
+                <input ref={first} name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={form.code} onChange={set("code")} />
+              </label>
+              <button
+                type="button"
+                className="ac-link"
+                onClick={() => run(async () => setInfo((await resendCode(verifyFor)).message))}
+              >
+                Send a new code
+              </button>
             </>
           )}
 
           {mode === "signin" && (
             <>
               <label>
-                WhatsApp number or email
-                <input ref={first} name="login" autoComplete="username" value={form.login} onChange={set("login")} />
+                Email
+                <input ref={first} type="email" name="login" autoComplete="username" value={form.login} onChange={set("login")} />
               </label>
               <label htmlFor="ac-password">
                 Password
@@ -271,10 +293,10 @@ export default function AccountDialog() {
 
           {mode === "forgot" && (
             <>
-              <p className="ac-lead">Enter your WhatsApp number or email. We will send you a 6-digit code.</p>
+              <p className="ac-lead">Enter your email. We will email you a 6-digit code to set a new password.</p>
               <label>
-                WhatsApp number or email
-                <input ref={first} name="login" autoComplete="username" value={form.login} onChange={set("login")} />
+                Email
+                <input ref={first} type="email" name="login" autoComplete="username" value={form.login} onChange={set("login")} />
               </label>
             </>
           )}
@@ -297,12 +319,10 @@ export default function AccountDialog() {
           )}
 
           <button type="submit" className="ip-btn ac-submit" disabled={busy}>
-            {busy
-              ? "Please wait…"
-              : { signup: "Create account", signin: "Sign in", forgot: "Send code", reset: "Set new password" }[mode]}
+            {busy ? "Please wait…" : BUTTONS[mode]}
           </button>
 
-          {(mode === "forgot" || mode === "reset") && (
+          {(mode === "forgot" || mode === "reset" || mode === "verify") && (
             <button type="button" className="ac-link ac-center" onClick={() => go("signin")}>
               ← Back to sign in
             </button>

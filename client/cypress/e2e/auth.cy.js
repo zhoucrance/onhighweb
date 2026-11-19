@@ -1,16 +1,14 @@
-// OnHighTech customer accounts, through the real pages: sign up (WhatsApp number
-// or email), sign in, wrong passwords and lock-out, forgot / reset password,
-// Google sign-in, sign out, and purchases linked to the account.
-// Needs the careers bot on :8000 (WhatsApp sending off: WHATSAPP_TOKEN=""), the
-// bills service on :8100 (demo) and the site on :3000. Test accounts are named "E2E ...".
+// OnHighTech customer accounts, through the real pages. On the website the
+// account is the EMAIL (verified with an emailed code; reset codes go to it);
+// the WhatsApp number is optional and only links the account to our WhatsApp chat.
+// Real codes: the local careers bot runs with ACCOUNT_DEV_CODES=1 and the devCode
+// task reads them (see cypress.config.js). Test accounts are named "E2E ...".
 
 const SIZES = { phone: [375, 812], computer: [1366, 800] };
-const RUN = Date.now().toString().slice(-6);
 const PASSWORD = "e2e-password-1";
 let counter = 0;
-// unique on every call and every run (test accounts stay in the local database)
+const newEmail = () => `e2e-${Date.now()}-${counter++}@e2e.test`;
 const newPhone = () => `07${String(Date.now() * 10 + (counter++ % 10)).slice(-8)}`;
-const newEmail = () => `e2e-${RUN}-${counter++}@e2e.test`;
 
 const visit = (url, opts = {}) =>
   cy.visit(url, {
@@ -21,25 +19,43 @@ const visit = (url, opts = {}) =>
     },
   });
 
+// Google is set up locally; most tests use email, so hide Google unless a test wants it
+const noGoogle = () => cy.intercept("GET", "**/api/account/config", { body: { googleClientId: "" } });
+
 const openSignIn = () => cy.get(".ph-account").click();
 const dialog = () => cy.get(".ac-dialog");
+const code = (email) =>
+  cy.task("devCode", email.toLowerCase()).then((c) => {
+    expect(c, `emailed code for ${email}`).to.match(/^\d{6}$/);
+    return c;
+  });
 
-function signUpWithPhone(phone, name = "E2E Phone User", expectSignedIn = true) {
+function fillSignUp(email, { name = "E2E User", phone = "" } = {}) {
   openSignIn();
   dialog().contains("[role=tab]", "Create account").click();
   dialog().find("input[name=name]").type(name);
-  dialog().find("input[name=phone]").type(phone);
+  dialog().find("input[name=email]").type(email);
   dialog().find("#ac-new-password").type(PASSWORD);
+  if (phone) dialog().find("input[name=phone]").type(phone);
   dialog().find(".ac-submit").click();
-  if (expectSignedIn) {
-    dialog().should("not.exist");
-    cy.get(".ph-account.is-signed-in").should("exist");
-  }
 }
 
-function signIn(login, password = PASSWORD) {
+function enterCode(email) {
+  dialog().should("contain", "Check your email").and("contain", email.toLowerCase());
+  code(email).then((c) => dialog().find("input[name=code]").type(c));
+  dialog().find(".ac-submit").click();
+}
+
+function createAccount(email, opts) {
+  fillSignUp(email, opts);
+  enterCode(email);
+  dialog().should("not.exist");
+  cy.get(".ph-account.is-signed-in").should("exist");
+}
+
+function signIn(email, password = PASSWORD) {
   openSignIn();
-  dialog().find("input[name=login]").clear().type(login);
+  dialog().find("input[name=login]").clear().type(email);
   dialog().find("#ac-password").clear().type(password);
   dialog().find(".ac-submit").click();
 }
@@ -52,69 +68,55 @@ const signOut = () => {
 
 Object.entries(SIZES).forEach(([device, [width, height]]) => {
   describe(`Accounts on a ${device} (${width}x${height})`, () => {
-    beforeEach(() => cy.viewport(width, height));
+    beforeEach(() => {
+      cy.viewport(width, height);
+      noGoogle();
+    });
 
-    it("signs up with a WhatsApp number, shows the account, signs out", () => {
-      const phone = newPhone();
+    it("creates an account with email, verifies it with the emailed code, signs out and in", () => {
+      const email = newEmail();
       visit("/interviews");
-      cy.get(".ph-account").should("be.visible");
       if (device === "phone") cy.get(".ph-account-label").should("not.be.visible");
       else cy.get(".ph-account-label").should("contain", "Sign in");
       openSignIn();
-      dialog().should("be.visible").and("contain", "Welcome back");
+      dialog().should("contain", "Welcome back");
+      dialog().find("input[name=login]").should("have.attr", "type", "email");
       cy.screenshot(`auth-${device}/1-sign-in`, { capture: "viewport" });
       dialog().contains("[role=tab]", "Create account").click();
+      // email is the account; WhatsApp is an optional extra that only links
+      dialog().find("input[name=email]").should("be.visible");
+      dialog().find(".ac-link-whatsapp").should("contain", "optional").and("contain", "Only links your account");
+      dialog().find("[role=radiogroup]").should("not.exist"); // no "sign up with" choice any more
       cy.screenshot(`auth-${device}/2-create-account`, { capture: "viewport" });
       dialog().find(".ac-close").click();
-      dialog().should("not.exist");
 
-      signUpWithPhone(phone);
+      fillSignUp(email.toUpperCase(), { name: "E2E Email User" });
+      dialog().find(".ac-info").should("contain", "emailed you a 6-digit code");
+      cy.screenshot(`auth-${device}/3-check-email`, { capture: "viewport" });
+      enterCode(email);
       dialog().should("not.exist");
-      cy.get(".ph-account.is-signed-in").should("contain", "E").click();
-      cy.get(".ph-account-menu").should("contain", "E2E Phone User");
+      cy.get(".ph-account.is-signed-in").click();
+      cy.get(".ph-account-menu").should("contain", "E2E Email User").and("contain", email);
       cy.contains(".ph-account-menu a", "My account").click();
       cy.location("pathname").should("eq", "/account");
-      cy.get(".ac-profile").should("contain", "E2E Phone User").and("contain", phone);
-      cy.screenshot(`auth-${device}/3-my-account`, { capture: "viewport" });
+      cy.get(".ac-profile").should("contain", email);
+      cy.screenshot(`auth-${device}/4-my-account`, { capture: "viewport" });
       cy.contains("button", "Sign out").click();
-      cy.location("pathname").should("eq", "/");
       cy.get(".ph-account").should("not.have.class", "is-signed-in");
-      // and back in, with the number typed another way
-      signIn(`+263 ${phone.slice(1, 3)} ${phone.slice(3)}`);
-      cy.get(".ph-account.is-signed-in").should("exist");
-      signOut();
-    });
-
-    it("signs up with an email only and signs in with it", () => {
-      const email = newEmail();
-      visit("/bills");
-      openSignIn();
-      dialog().contains("[role=tab]", "Create account").click();
-      dialog().find("input[name=name]").type("E2E Email User");
-      dialog().contains("[role=radio]", "Email").click().should("have.attr", "aria-checked", "true");
-      dialog().find("input[name=email]").type(email.toUpperCase());
-      dialog().find("input[name=phone]").parent().should("contain", "optional");
-      dialog().find("#ac-new-password").type(PASSWORD);
-      // the password can be shown and hidden
-      dialog().find("#ac-new-password").should("have.attr", "type", "password");
-      dialog().contains(".ac-password button", "Show").click();
-      dialog().find("#ac-new-password").should("have.attr", "type", "text");
-      dialog().contains(".ac-password button", "Hide").click();
-      dialog().find(".ac-submit").click();
-      cy.get(".ph-account.is-signed-in").click();
-      cy.get(".ph-account-menu").should("contain", email); // saved in lower case
-      cy.contains(".ph-account-menu button", "Sign out").click();
-      signIn(email);
+      signIn(email.toUpperCase());
       cy.get(".ph-account.is-signed-in").should("exist");
       signOut();
     });
   });
 });
 
-describe("Account checks (sign up, sign in, lock-out)", () => {
-  beforeEach(() => cy.viewport(...SIZES.phone));
+describe("Sign-up checks and email verification", () => {
+  beforeEach(() => {
+    cy.viewport(...SIZES.phone);
+    noGoogle();
+  });
 
-  it("refuses bad sign-up details with clear messages", () => {
+  it("refuses bad details with clear messages", () => {
     visit("/interviews");
     openSignIn();
     dialog().contains("[role=tab]", "Create account").click();
@@ -122,41 +124,83 @@ describe("Account checks (sign up, sign in, lock-out)", () => {
     dialog().find(".ip-notice").should("contain", "your name");
     dialog().find("input[name=name]").type("E2E Checks");
     dialog().find(".ac-submit").click();
-    dialog().find(".ip-notice").should("contain", "WhatsApp number or your email");
-    dialog().find("input[name=phone]").type("123");
-    dialog().find("#ac-new-password").type(PASSWORD);
-    dialog().find(".ac-submit").click();
-    dialog().find(".ip-notice").should("contain", "WhatsApp number, like");
-    dialog().find("input[name=phone]").clear().type(newPhone());
-    dialog().find("#ac-new-password").clear().type("short");
-    dialog().find(".ac-submit").click();
-    dialog().find(".ip-notice").should("contain", "at least 8");
+    dialog().find(".ip-notice").should("contain", "email address");
     dialog().find("input[name=email]").type("not-an-email");
-    dialog().find("#ac-new-password").clear().type(PASSWORD);
     dialog().find(".ac-submit").click();
     dialog().find(".ip-notice").should("contain", "email address");
+    dialog().find("input[name=email]").clear().type(newEmail());
+    dialog().find("#ac-new-password").type("short");
+    dialog().find(".ac-submit").click();
+    dialog().find(".ip-notice").should("contain", "at least 8");
+    dialog().find("#ac-new-password").clear().type(PASSWORD);
+    dialog().find("input[name=phone]").type("123");
+    dialog().find(".ac-submit").click();
+    dialog().find(".ip-notice").should("contain", "WhatsApp number does not look right");
     cy.get("body").type("{esc}");
-    dialog().should("not.exist"); // Escape closes it
+    dialog().should("not.exist");
   });
 
-  it("allows one account per WhatsApp number", () => {
+  it("links an optional WhatsApp number, shown in My account", () => {
+    const email = newEmail();
     const phone = newPhone();
     visit("/interviews");
-    signUpWithPhone(phone);
+    createAccount(email, { phone, name: "E2E Linked" });
+    visit("/account");
+    cy.get(".ac-profile").should("contain", email).and("contain", `WhatsApp ${phone}`);
+  });
+
+  it("checks the code: wrong code, a new code, then the right one", () => {
+    const email = newEmail();
+    visit("/interviews");
+    fillSignUp(email);
+    dialog().find("input[name=code]").type("000000");
+    dialog().find(".ac-submit").click();
+    dialog().find(".ip-notice").should("contain", "not right or has expired");
+    dialog().contains("button", "Send a new code").click();
+    dialog().find(".ac-info").should("contain", "new code");
+    dialog().find("input[name=code]").clear();
+    enterCode(email);
+    cy.get(".ph-account.is-signed-in").should("exist");
+  });
+
+  it("signing in before verifying asks for the code", () => {
+    const email = newEmail();
+    visit("/interviews");
+    fillSignUp(email);
+    dialog().should("contain", "Check your email");
+    dialog().find(".ac-close").click(); // left without verifying
+    signIn(email);
+    dialog().should("contain", "Check your email");
+    dialog().find(".ac-info").should("contain", "verify your email");
+    enterCode(email);
+    cy.get(".ph-account.is-signed-in").should("exist");
+  });
+
+  it("allows one account per email", () => {
+    const email = newEmail();
+    visit("/interviews");
+    createAccount(email);
     signOut();
-    signUpWithPhone(phone, "E2E Second", false);
+    fillSignUp(email.toUpperCase(), { name: "E2E Second" });
     dialog().find(".ip-notice").should("contain", "already exists");
   });
+});
 
-  it("gives the same answer for a wrong password and an unknown account, then locks after too many", () => {
-    const phone = newPhone();
+describe("Signing in safely", () => {
+  beforeEach(() => {
+    cy.viewport(...SIZES.phone);
+    noGoogle();
+  });
+
+  it("same answer for a wrong password and an unknown email, then a lock-out after too many", () => {
+    const email = newEmail();
     visit("/interviews");
-    signUpWithPhone(phone);
+    createAccount(email);
     signOut();
-    signIn("0710000000"); // no such account
+    signIn("nobody-here@e2e.test");
     dialog().find(".ip-notice").invoke("text").then((unknown) => {
+      dialog().find("input[name=login]").clear().type(email);
       dialog().find("#ac-password").clear().type("wrong-password");
-      dialog().find("input[name=login]").clear().type(phone);
       dialog().find(".ac-submit").click();
       dialog().find(".ip-notice").should("have.text", unknown); // no account probing
     });
@@ -167,23 +211,49 @@ describe("Account checks (sign up, sign in, lock-out)", () => {
     dialog().find("#ac-password").clear().type(PASSWORD); // even the right password waits
     dialog().find(".ac-submit").click();
     dialog().find(".ip-notice").should("contain", "Too many tries");
-    cy.screenshot("auth-phone/4-too-many-tries", { capture: "viewport" });
+    cy.screenshot("auth-phone/5-too-many-tries", { capture: "viewport" });
   });
 });
 
-describe("Forgot password", () => {
-  beforeEach(() => cy.viewport(...SIZES.phone));
+describe("Forgot password (email only)", () => {
+  beforeEach(() => {
+    cy.viewport(...SIZES.phone);
+    noGoogle();
+  });
 
-  it("asks for a code without revealing whether the account exists", () => {
+  it("resets with the emailed code and signs in with the new password", () => {
+    const email = newEmail();
+    visit("/interviews");
+    createAccount(email, { phone: newPhone() });
+    signOut();
+    cy.wait(1100); // a different second from the verification code in the log
+    openSignIn();
+    dialog().contains("button", "Forgot your password?").click();
+    dialog().should("contain", "Reset your password").and("contain", "email you a 6-digit code");
+    dialog().find("input[name=login]").type(email);
+    dialog().find(".ac-submit").click();
+    dialog().find(".ac-info").should("contain", "If an account uses that email");
+    cy.screenshot("auth-phone/6-reset-code", { capture: "viewport" });
+    code(email).then((c) => dialog().find("input[name=code]").type(c));
+    dialog().find("#ac-reset-password").type("brand-new-pass");
+    dialog().find(".ac-submit").click();
+    dialog().should("not.exist");
+    cy.get(".ph-account.is-signed-in").should("exist");
+    signOut();
+    signIn(email); // the old password no longer works
+    dialog().find(".ip-notice").should("contain", "not right");
+    dialog().find(".ac-close").click();
+    signIn(email, "brand-new-pass");
+    cy.get(".ph-account.is-signed-in").should("exist");
+  });
+
+  it("answers the same for an unknown email, and a wrong code is refused", () => {
     visit("/interviews");
     openSignIn();
     dialog().contains("button", "Forgot your password?").click();
-    dialog().should("contain", "Reset your password");
-    dialog().find("input[name=login]").type("0710000000"); // nobody has this number
+    dialog().find("input[name=login]").type("nobody-here@e2e.test");
     dialog().find(".ac-submit").click();
-    dialog().find(".ac-info").should("contain", "If an account matches");
-    dialog().should("contain", "Enter your code");
-    cy.screenshot("auth-phone/5-enter-code", { capture: "viewport" });
+    dialog().find(".ac-info").should("contain", "If an account uses that email");
     dialog().find("input[name=code]").type("123456");
     dialog().find("#ac-reset-password").type("new-password-1");
     dialog().find(".ac-submit").click();
@@ -191,54 +261,35 @@ describe("Forgot password", () => {
     dialog().contains("button", "Back to sign in").click();
     dialog().should("contain", "Welcome back");
   });
-
-  it("sets a new password with the right code and signs in", () => {
-    // the code itself is only ever sent to the customer; the server's code checks
-    // are covered by the bot's tests, here the page's handling of a good code
-    cy.intercept("POST", "**/api/account/reset", {
-      statusCode: 200,
-      body: {
-        token: "stub-token",
-        moved: 0,
-        account: { id: "acc-stub", name: "E2E Reset", phone: "", display: "", email: "reset@e2e.test", google: false },
-      },
-    }).as("reset");
-    visit("/interviews");
-    openSignIn();
-    dialog().contains("button", "Forgot your password?").click();
-    dialog().find("input[name=login]").type("reset@e2e.test");
-    dialog().find(".ac-submit").click();
-    dialog().find("input[name=code]").type("654321");
-    dialog().find("#ac-reset-password").type("new-password-1");
-    dialog().find(".ac-submit").click();
-    cy.wait("@reset").its("request.body").should("deep.equal", {
-      login: "reset@e2e.test",
-      code: "654321",
-      password: "new-password-1",
-    });
-    dialog().should("not.exist");
-    cy.get(".ph-account.is-signed-in").should("contain", "E");
-  });
 });
 
 describe("Sign in with Google", () => {
   beforeEach(() => cy.viewport(...SIZES.phone));
 
-  it("does not show a Google button until Google is set up", () => {
+  it("shows Google's real button now that Google is set up", () => {
+    visit("/interviews");
+    openSignIn();
+    cy.get("[data-testid=google-button] iframe", { timeout: 20000 })
+      .should("have.attr", "src")
+      .and("contain", "accounts.google.com");
+  });
+
+  it("hides the Google button when Google is not set up", () => {
+    noGoogle();
     visit("/interviews");
     openSignIn();
     dialog().should("be.visible");
     cy.get("[data-testid=google-button]").should("not.exist");
   });
 
-  it("signs in with Google once set up", () => {
+  it("signs in when Google returns a credential", () => {
     cy.intercept("GET", "**/api/account/config", { body: { googleClientId: "test-client.apps.googleusercontent.com" } });
     cy.intercept("POST", "**/api/account/google", {
       statusCode: 200,
       body: {
         token: "stub-token",
         moved: 0,
-        account: { id: "acc-g", name: "E2E Google", phone: "", display: "", email: "g@e2e.test", google: true },
+        account: { id: "acc-g", name: "E2E Google", phone: "", display: "", email: "g@e2e.test", google: true, verified: true },
       },
     }).as("google");
     // stand-in for Google's sign-in script: its button returns a credential
@@ -264,7 +315,6 @@ describe("Sign in with Google", () => {
     openSignIn();
     cy.get("[data-testid=google-button]").contains("Continue with Google").click();
     cy.wait("@google").its("request.body").should("deep.equal", { credential: "google-id-token" });
-    cy.window().its("__googleConfig.client_id").should("eq", "test-client.apps.googleusercontent.com");
     dialog().should("not.exist");
     cy.get(".ph-account.is-signed-in").click();
     cy.get(".ph-account-menu").should("contain", "E2E Google");
@@ -272,10 +322,12 @@ describe("Sign in with Google", () => {
 });
 
 describe("Purchases linked to the account", () => {
-  beforeEach(() => cy.viewport(...SIZES.phone));
+  beforeEach(() => {
+    cy.viewport(...SIZES.phone);
+    noGoogle();
+  });
 
-  it("a guest is offered sign-in or guest; a signed-in customer goes straight to paying", () => {
-    visit("/interviews");
+  const toUnlock = () => {
     cy.get(".ip-topic").first().click();
     cy.get(".ip-card", { timeout: 15000 }).should("be.visible");
     const next = () =>
@@ -287,22 +339,23 @@ describe("Purchases linked to the account", () => {
       });
     next();
     cy.get(".ip-check input").check();
+  };
+
+  it("a guest is offered sign-in or guest; a signed-in customer goes straight to paying", () => {
+    visit("/interviews");
+    toUnlock();
     cy.contains(".ip-panel .ip-btn", "Continue").click();
     cy.get(".ip-account-step").should("contain", "Keep this topic on every device");
-    cy.contains("button", "Sign in or create an account").should("be.visible");
-    cy.screenshot("auth-phone/6-guest-or-sign-in", { capture: "viewport" });
+    cy.screenshot("auth-phone/7-guest-or-sign-in", { capture: "viewport" });
     cy.contains("button", "Continue as guest").click();
     cy.contains("h3", "Choose how to pay").should("be.visible");
-    cy.contains("Practise on WhatsApp too").should("not.exist"); // the old number step is gone
+    cy.contains("Practise on WhatsApp too").should("not.exist"); // no number step at payment
 
-    // signed in: no account step, the account's number fills in EcoCash
+    const email = newEmail();
     const phone = newPhone();
     visit("/interviews");
-    signUpWithPhone(phone, "E2E Buyer");
-    cy.get(".ip-topic").first().click();
-    cy.get(".ip-card", { timeout: 15000 }).should("be.visible");
-    next();
-    cy.get(".ip-check input").check();
+    createAccount(email, { phone, name: "E2E Buyer" });
+    toUnlock();
     cy.contains(".ip-panel", "Unlocks for E2E Buyer").should("contain", phone);
     cy.contains(".ip-panel .ip-btn", "Continue").click();
     cy.get(".ip-account-step").should("not.exist");
@@ -311,11 +364,11 @@ describe("Purchases linked to the account", () => {
   });
 
   it("a signed-in bill payment shows in My account", () => {
-    const phone = newPhone();
     visit("/bills");
-    signUpWithPhone(phone, "E2E Bills");
+    createAccount(newEmail(), { name: "E2E Bills" });
     visit("/bills/pay/ZETDC");
-    cy.get(".bp-signin-hint").should("not.exist"); // already signed in
+    cy.get(".bp-steps");
+    cy.get(".bp-signin-hint").should("not.exist");
     cy.get(".bp-field input").first().type("37132229735");
     cy.contains(".bp-quick button", "10").click();
     cy.get(".bp-checkout-bar .ip-btn").contains("Continue").click();
@@ -326,7 +379,7 @@ describe("Purchases linked to the account", () => {
     visit("/account");
     cy.contains(".ac-card", "My bill payments").should("contain", "ZESA Pre-paid Electricity").and("contain", "Paid");
     cy.contains(".ac-card", "My bill payments").find("code").should("not.be.empty");
-    cy.screenshot("auth-phone/7-my-payments", { capture: "viewport" });
+    cy.screenshot("auth-phone/8-my-payments", { capture: "viewport" });
   });
 
   it("a guest sees a sign-in hint on bills", () => {

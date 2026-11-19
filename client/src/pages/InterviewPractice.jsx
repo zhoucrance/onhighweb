@@ -446,7 +446,7 @@ function AccountStep({ topic, onReady, onAlreadyPaid }) {
       <h3>Keep this topic on every device</h3>
       <p className="ip-muted">
         Sign in or create an OnHighTech account and this topic stays yours on any phone or computer,
-        and in our WhatsApp chat on your account’s number.
+        and in our WhatsApp chat too if you link your WhatsApp number.
       </p>
       <Notice error={error} />
       <button type="button" className="ip-btn" onClick={() => openAccount("signin", afterSignIn)}>
