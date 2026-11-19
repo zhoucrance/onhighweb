@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, getToken, interviewApi, setToken } from "../lib/interviewApi";
+import { localPhone, openAccount, useAccount } from "../lib/account";
 import "../resourses/interview-practice.css";
 
 // Interview flash cards for the website: the same content, free preview and
@@ -7,7 +8,6 @@ import "../resourses/interview-practice.css";
 // Views: browse -> card -> unlock -> (optional WhatsApp number) -> pay -> card (unlocked).
 
 const PENDING_KEY = "onhigh_interview_payment";
-const WHATSAPP_KEY = "onhigh_interview_whatsapp";
 const POLL_MS = 5000;
 const POLL_LIMIT = 36; // about 3 minutes of automatic checking
 const SUGGESTIONS = 7;
@@ -25,23 +25,6 @@ function writePending(value) {
   try {
     if (value) window.sessionStorage.setItem(PENDING_KEY, JSON.stringify(value));
     else window.sessionStorage.removeItem(PENDING_KEY);
-  } catch {
-    /* ignore */
-  }
-}
-
-function savedWhatsApp() {
-  try {
-    return window.localStorage.getItem(WHATSAPP_KEY) || "";
-  } catch {
-    return "";
-  }
-}
-
-function saveWhatsApp(value) {
-  try {
-    if (value) window.localStorage.setItem(WHATSAPP_KEY, value);
-    else window.localStorage.removeItem(WHATSAPP_KEY);
   } catch {
     /* ignore */
   }
@@ -425,21 +408,32 @@ function Browse({ signedIn, onOpen }) {
   );
 }
 
-/* ---------------- optional WhatsApp number (no code) ---------------- */
+/* ---------------- account (or guest) before paying ---------------- */
 
-function WhatsAppNumber({ onDone }) {
-  const [number, setNumber] = useState(savedWhatsApp);
+// Signed in: the topic belongs to the account (any device) and to its WhatsApp
+// number (asked once, at sign-up). Not signed in: sign in / create an account,
+// or carry on as a guest (this browser only).
+function AccountStep({ topic, onReady, onAlreadyPaid }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
-  const go = async (value) => {
+  const afterSignIn = async () => {
+    try {
+      const t = await interviewApi.topic(topic.id);
+      if (t.paid) onAlreadyPaid();
+      else onReady();
+    } catch (err) {
+      setError(err);
+    }
+  };
+
+  const guest = async () => {
     setBusy(true);
     setError(null);
     try {
-      const r = await interviewApi.device(value.trim());
+      const r = await interviewApi.device("");
       setToken(r.token);
-      saveWhatsApp(r.whatsapp ? value.trim() : "");
-      onDone(r.whatsapp ? value.trim() : "");
+      onReady();
     } catch (err) {
       setError(err);
     } finally {
@@ -448,43 +442,21 @@ function WhatsAppNumber({ onDone }) {
   };
 
   return (
-    <form
-      className="ip-panel ip-form"
-      onSubmit={(e) => {
-        e.preventDefault();
-        go(number);
-      }}
-    >
-      <h3>Practise on WhatsApp too? (optional)</h3>
+    <div className="ip-panel ip-account-step">
+      <h3>Keep this topic on every device</h3>
       <p className="ip-muted">
-        By giving your WhatsApp number, you will be able to open this topic on our WhatsApp
-        platform as well (0781576825), with the same questions and answers, even when you have
-        no data for the website.
+        Sign in or create an OnHighTech account and this topic stays yours on any phone or computer,
+        and in our WhatsApp chat on your account’s number.
       </p>
       <Notice error={error} />
-      <label>
-        <span className="ip-label-row">
-          WhatsApp number <span className="ip-optional">optional</span>
-        </span>
-        <input
-          type="tel"
-          inputMode="tel"
-          autoComplete="tel"
-          placeholder="0772123456"
-          value={number}
-          onChange={(e) => setNumber(e.target.value)}
-        />
-      </label>
-      <p className="ip-muted ip-small">No code needed. Leave it empty to use this topic on this browser only.</p>
-      <button type="submit" className="ip-btn" disabled={busy}>
-        {busy ? "Please wait…" : "Continue to payment"}
+      <button type="button" className="ip-btn" onClick={() => openAccount("signin", afterSignIn)}>
+        Sign in or create an account
       </button>
-      {number.trim() && (
-        <button type="button" className="ip-link" disabled={busy} onClick={() => go("")}>
-          Skip, use this browser only
-        </button>
-      )}
-    </form>
+      <button type="button" className="ip-btn ip-btn--ghost" disabled={busy} onClick={guest}>
+        {busy ? "Please wait…" : "Continue as guest"}
+      </button>
+      <p className="ip-muted ip-small">As a guest, the topic opens in this browser only.</p>
+    </div>
   );
 }
 
@@ -632,7 +604,7 @@ function Pay({ topic, defaultPhone, onPaid }) {
 function Unlock({ topic, firstLocked, onSignedIn, onPaid }) {
   const [agree, setAgree] = useState(false);
   const [step, setStep] = useState("offer");
-  const [whatsapp, setWhatsapp] = useState("");
+  const account = useAccount();
   // The server sends stand-in text for these, shown blurred: a hint, never the questions.
   const remaining = topic.cards.slice(firstLocked);
 
@@ -673,21 +645,29 @@ function Unlock({ topic, firstLocked, onSignedIn, onPaid }) {
               <Paragraphs text={topic.terms} />
             </div>
           )}
-          <button type="button" className="ip-btn" disabled={!agree} onClick={() => setStep("number")}>
+          {account && (
+            <p className="ip-muted ip-small">
+              Unlocks for {account.name}
+              {account.phone ? ` and on WhatsApp ${localPhone(account.phone)}` : ""}.
+            </p>
+          )}
+          <button
+            type="button"
+            className="ip-btn"
+            disabled={!agree}
+            onClick={() => {
+              onSignedIn();
+              setStep(account ? "pay" : "account");
+            }}
+          >
             Continue
           </button>
         </div>
       )}
-      {step === "number" && (
-        <WhatsAppNumber
-          onDone={(number) => {
-            setWhatsapp(number);
-            onSignedIn();
-            setStep("pay");
-          }}
-        />
+      {step === "account" && (
+        <AccountStep topic={topic} onReady={() => setStep("pay")} onAlreadyPaid={onPaid} />
       )}
-      {step === "pay" && <Pay topic={topic} defaultPhone={whatsapp} onPaid={onPaid} />}
+      {step === "pay" && <Pay topic={topic} defaultPhone={localPhone(account?.phone)} onPaid={onPaid} />}
     </div>
   );
 }
@@ -794,6 +774,7 @@ function Card({ topic, index, setIndex, onSignedIn, onPaid, onBack }) {
 
 export default function InterviewPractice() {
   const [signedIn, setSignedIn] = useState(Boolean(getToken()));
+  const account = useAccount(); // signing in or out refreshes "My topics"
   const [topic, setTopic] = useState(null);
   const [index, setIndex] = useState(0);
   const [loading, setLoading] = useState(null); // {name} while a topic is opening
@@ -900,7 +881,7 @@ export default function InterviewPractice() {
           onBack={() => setTopic(null)}
         />
       ) : (
-        <Browse signedIn={signedIn} onOpen={open} />
+        <Browse key={account?.id || "guest"} signedIn={signedIn || Boolean(account)} onOpen={open} />
       )}
     </div>
   );

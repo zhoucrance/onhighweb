@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { authHeader, openAccount, useAccount } from "../lib/account";
 import "../resourses/interview-practice.css";
 import "../resourses/bills.css";
 
@@ -26,7 +27,8 @@ async function call(path, { method = "GET", body } = {}) {
   try {
     response = await fetch(`${BASE}${path}`, {
       method,
-      headers: body ? { "Content-Type": "application/json" } : {},
+      // signed in: the payment is saved to the customer's account
+      headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...authHeader() },
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
@@ -592,6 +594,7 @@ function DoneStep({ result, setResult }) {
 
 export function BillCheckout({ code }) {
   const navigate = useNavigate();
+  const account = useAccount();
   const [catalogue, setCatalogue] = useState(null);
   const [loadError, setLoadError] = useState("");
   const [step, setStep] = useState(0);
@@ -762,6 +765,14 @@ export function BillCheckout({ code }) {
 
       <main className="bp-checkout-body">
         {catalogue?.demo && step === 0 && <p className="bp-demo">Demo mode: demo options and prices, no real payments.</p>}
+        {!account && step === 0 && biller && (
+          <p className="bp-signin-hint">
+            <button type="button" onClick={() => openAccount("signin")}>
+              Sign in
+            </button>{" "}
+            to keep a record of your payments and tokens in your account.
+          </p>
+        )}
         <Notice text={loadError} />
         {!catalogue && !loadError && <p className="ip-muted">Loading…</p>}
         {catalogue && !biller && (

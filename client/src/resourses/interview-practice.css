@@ -193,7 +193,7 @@
   .ph-tabs-inner .ph-tablist { margin-left: auto; }
 }
 .ph-long { display: none; }
-@media (min-width: 640px) {
+@media (min-width: 900px) { /* long tab names only when they fit beside the account button */
   .ph-long { display: inline; }
   .ph-short { display: none; }
 }

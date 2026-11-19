@@ -2,12 +2,72 @@ import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import Loader from "../components/Loader";
 import WhatsAppIcon from "../components/WhatsAppIcon";
+import AccountDialog from "../components/AccountDialog";
+import { openAccount, signOut, useAccount } from "../lib/account";
+import "../resourses/account.css";
 import "../resourses/interview-practice.css";
 
 const InterviewPractice = lazy(() => import("./InterviewPractice"));
 const PublicBusBooking = lazy(() => import("./PublicBusBooking"));
 const BillsPayments = lazy(() => import("./BillsPayments"));
 const BillCheckout = lazy(() => import("./BillsPayments").then((m) => ({ default: m.BillCheckout })));
+const MyAccount = lazy(() => import("./MyAccount"));
+
+// Header: "Sign in" when signed out; the customer's initial and a small menu when signed in.
+function AccountButton() {
+  const account = useAccount();
+  const [menu, setMenu] = useState(false);
+  const box = useRef(null);
+  useEffect(() => {
+    if (!menu) return undefined;
+    const away = (e) => box.current && !box.current.contains(e.target) && setMenu(false);
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [menu]);
+  if (!account) {
+    return (
+      <button type="button" className="ph-account" onClick={() => openAccount("signin")}>
+        <span aria-hidden="true">👤</span>
+        <span className="ph-account-label">Sign in</span>
+      </button>
+    );
+  }
+  return (
+    <div className="ph-account-wrap" ref={box}>
+      <button
+        type="button"
+        className="ph-account is-signed-in"
+        aria-haspopup="menu"
+        aria-expanded={menu}
+        aria-label={`Account: ${account.name}`}
+        onClick={() => setMenu((m) => !m)}
+      >
+        {(account.name || "?").trim().charAt(0).toUpperCase()}
+      </button>
+      {menu && (
+        <div className="ph-account-menu" role="menu">
+          <p>
+            <strong>{account.name}</strong>
+            <span>{account.email || account.display}</span>
+          </p>
+          <Link to="/account" role="menuitem" onClick={() => setMenu(false)}>
+            My account
+          </Link>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setMenu(false);
+              signOut();
+            }}
+          >
+            Sign out
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // OnHighTech Solutions on WhatsApp: one number for every solution (0781576825).
 // Never the bus booking bot. Typing "interviews" opens the interview practice
@@ -102,7 +162,10 @@ export default function PublicHome() {
   const { pathname, search } = useLocation();
   const params = new URLSearchParams(search);
   const tendaReturn = params.get("paymentReturn") === "1";
-  const tab = pathname.startsWith("/bills")
+  const accountPage = pathname.startsWith("/account");
+  const tab = accountPage
+    ? "account"
+    : pathname.startsWith("/bills")
     ? "bills"
     : pathname.startsWith("/bus-booking") || (pathname === "/" && tendaReturn)
     ? "bus"
@@ -143,6 +206,7 @@ export default function PublicHome() {
               <span className="ph-short">Bills</span>
             </Link>
           </div>
+          <AccountButton />
           <a className="ph-wa-link" href={whatsapp} aria-label="Continue on WhatsApp">
             <WhatsAppIcon size={22} />
           </a>
@@ -150,7 +214,9 @@ export default function PublicHome() {
       </nav>
       )}
       <Suspense fallback={<Loader />}>
-        {checkout ? (
+        {accountPage ? (
+          <MyAccount />
+        ) : checkout ? (
           <BillCheckout key={checkout} code={checkout} />
         ) : tab === "bills" ? (
           <BillsPayments />
@@ -162,6 +228,7 @@ export default function PublicHome() {
           <InterviewPractice key={`${pathname}-${homeVisit}`} />
         )}
       </Suspense>
+      <AccountDialog />
       </div>
     </div>
   );

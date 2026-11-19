@@ -1,0 +1,100 @@
+/* OnHighTech customer accounts: header button, sign-in window, My account page.
+   Mobile first (phones are the base; wider screens add on). Tokens from interview-practice.css. */
+
+/* ---- header: Sign in / initial + menu ---- */
+.ph-page .ph-account { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ip-tap); min-width: var(--ip-tap); padding: 0 12px; border: 1px solid rgba(255,255,255,.35) !important; border-radius: 12px !important; background: transparent; color: var(--ip-white); font-weight: 700; font-size: 14px; cursor: pointer; transition: background .15s ease; }
+.ph-page .ph-account:hover { background: rgba(255,255,255,.1); }
+.ph-account-label { display: none; }
+.ph-page .ph-account.is-signed-in { width: var(--ip-tap); padding: 0; border: 0 !important; border-radius: 50% !important; background: var(--ip-accent); color: var(--ip-ink); font-size: 18px; }
+.ph-account-wrap { position: relative; flex: 0 0 auto; }
+.ph-account-menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 80; width: 240px; display: grid; padding: 8px; border-radius: 16px; background: var(--ip-white); box-shadow: 0 20px 50px rgba(7,27,61,.25); animation: ac-pop .18s ease both; }
+.ph-account-menu p { display: grid; gap: 2px; margin: 0 0 6px !important; padding: 8px 10px 12px; border-bottom: 1px solid var(--ip-border); }
+.ph-account-menu p strong { color: var(--ip-ink); }
+.ph-account-menu p span { color: var(--ip-muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
+.ph-page .ph-account-menu a, .ph-page .ph-account-menu button { display: flex; align-items: center; min-height: var(--ip-tap); padding: 0 10px; border: 0; border-radius: 10px !important; background: none; color: var(--ip-ink) !important; font-weight: 600; text-align: left; text-decoration: none !important; cursor: pointer; }
+.ph-page .ph-account-menu a:hover, .ph-page .ph-account-menu button:hover { background: var(--ip-surface); }
+@media (min-width: 900px) { .ph-account-label { display: inline; } }
+
+/* ---- sign-in window: full screen on phones, a card on computers ---- */
+.ac-backdrop { position: fixed; inset: 0; z-index: 1300; display: flex; align-items: flex-end; justify-content: center; background: rgba(7,27,61,.5); animation: ac-fade .2s ease both; }
+.ac-dialog { width: 100%; height: 100vh; height: 100dvh; overflow-y: auto; overscroll-behavior: contain; padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ip-white); color: var(--ip-ink); animation: ac-up .28s cubic-bezier(.2,.9,.28,1) both; }
+.ac-dialog *, .ac-dialog *::before, .ac-dialog *::after { box-sizing: border-box; }
+.ac-dialog h2, .ac-dialog p { margin: 0; }
+.ac-dialog button, .ac-dialog input { font: inherit; }
+.ac-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ac-head h2 { font-size: 22px; letter-spacing: -.3px; }
+.ac-dialog .ac-close { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--ip-border); border-radius: 50% !important; background: var(--ip-white); color: var(--ip-ink); font-size: 18px; cursor: pointer; }
+.ac-lead { margin-top: 6px !important; color: var(--ip-text); line-height: 1.5; }
+.ac-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 16px; padding: 4px; border-radius: 14px; background: var(--ip-surface); }
+.ac-dialog .ac-tabs button { min-height: 44px; border: 0; border-radius: 10px !important; background: none; color: var(--ip-muted); font-weight: 700; cursor: pointer; }
+.ac-dialog .ac-tabs button[aria-selected="true"] { background: var(--ip-white); color: var(--ip-ink); box-shadow: 0 2px 8px rgba(7,27,61,.08); }
+.ac-google { display: flex; justify-content: center; min-height: 44px; margin-top: 16px; }
+.ac-or { display: flex; align-items: center; gap: 10px; margin: 14px 0 0 !important; color: var(--ip-muted); font-size: 13px; }
+.ac-or::before, .ac-or::after { content: ""; flex: 1; height: 1px; background: var(--ip-border); }
+.ac-form { display: grid; gap: 14px; margin-top: 16px; }
+.ac-form label { display: grid; gap: 6px; font-weight: 700; font-size: 14px; }
+.ac-form input { width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid var(--ip-border); border-radius: 12px; background: var(--ip-white); color: var(--ip-ink); font-size: 16px; font-weight: 500; }
+.ac-form input:focus { outline: 3px solid rgba(18,143,202,.25); border-color: var(--ip-primary); }
+.ac-form small { color: var(--ip-muted); font-size: 12px; font-weight: 500; }
+.ac-form label > .ac-optional { justify-self: start; }
+.ac-optional { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--ip-surface); color: var(--ip-muted); font-size: 12px; font-weight: 600; }
+.ac-password { position: relative; display: block; }
+.ac-password input { padding-right: 72px; }
+.ac-dialog .ac-password button { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); min-height: 36px; padding: 0 10px; border: 0; border-radius: 8px !important; background: var(--ip-surface); color: var(--ip-primary); font-size: 13px; font-weight: 700; cursor: pointer; }
+.ac-choice { display: grid; gap: 6px; font-weight: 700; font-size: 14px; }
+.ac-choice > div { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ac-dialog .ac-choice button { min-height: 44px; border: 1px solid var(--ip-border); border-radius: 12px !important; background: var(--ip-white); color: var(--ip-text); font-weight: 600; cursor: pointer; }
+.ac-dialog .ac-choice button[aria-checked="true"] { border: 2px solid var(--ip-primary); background: var(--ip-primary-light); color: var(--ip-primary-dark); }
+.ac-dialog .ac-submit { width: 100%; min-height: 52px; font-size: 16px; border-radius: 12px !important; }
+.ac-dialog .ac-link { justify-self: start; min-height: 40px; padding: 0; border: 0; background: none; color: var(--ip-primary); font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.ac-dialog .ac-center { justify-self: center; }
+.ac-switch { text-align: center; color: var(--ip-text); }
+.ac-dialog .ac-switch button { border: 0; background: none; color: var(--ip-primary); font-weight: 700; cursor: pointer; padding: 6px 2px; }
+.ac-info { padding: 12px 14px; border-radius: 12px; background: #e7f8ee; color: #135c34; line-height: 1.5; }
+@media (min-width: 640px) {
+  .ac-backdrop { align-items: center; padding: 24px; }
+  .ac-dialog { max-width: 440px; height: auto; max-height: calc(100vh - 48px); padding: 24px; border-radius: 22px; box-shadow: 0 30px 80px rgba(7,27,61,.35); animation: ac-pop .24s cubic-bezier(.2,.9,.3,1.2) both; }
+}
+
+/* ---- interview: account (or guest) before paying ---- */
+.ip-account-step { display: grid; gap: 10px; }
+.ip-account-step .ip-btn { width: 100%; margin: 0 !important; }
+
+/* ---- bills: sign-in hint ---- */
+.bp-signin-hint { margin: 0 0 12px !important; padding: 10px 12px; border-radius: 12px; background: var(--ip-white); border: 1px dashed var(--ip-border); color: var(--ip-text); font-size: 14px; }
+.bp-signin-hint button { border: 0; background: none; padding: 0; color: var(--ip-primary); font-weight: 800; cursor: pointer; text-decoration: underline; }
+
+/* ---- My account page ---- */
+.ac-page { min-height: 60vh; background: var(--ip-surface); }
+.ac-body { display: grid; gap: 14px; padding: 18px 0 48px; }
+.ac-card { padding: 16px; border: 1px solid var(--ip-border); border-radius: 16px; background: var(--ip-white); }
+.ac-profile { display: flex; align-items: center; gap: 14px; }
+.ac-profile h1 { font-size: 22px; }
+.ac-profile p { margin-top: 2px !important; color: var(--ip-muted); overflow-wrap: anywhere; }
+.ac-avatar { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--ip-accent); color: var(--ip-ink); font-weight: 800; }
+.ac-avatar--big { flex: none; width: 64px; height: 64px; font-size: 28px; }
+.ac-badge { display: inline-block; margin-top: 6px !important; padding: 2px 10px; border-radius: 999px; background: var(--ip-surface); font-size: 12px; font-weight: 600; }
+.ac-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.ac-card-head h2 { font-size: 17px; }
+.ac-page .ac-card-head a { color: var(--ip-primary) !important; font-weight: 700; text-decoration: none !important; }
+.ac-list { margin: 0; padding: 0; list-style: none; display: grid; }
+.ac-list li { display: grid; gap: 2px; padding: 12px 0; border-top: 1px solid var(--ip-border); }
+.ac-list li:first-child { border-top: 0; padding-top: 0; }
+.ac-list span { color: var(--ip-muted); font-size: 13px; }
+.ac-list code { justify-self: start; margin-top: 4px; padding: 4px 8px; border-radius: 8px; background: var(--ip-primary-light); font-weight: 700; letter-spacing: .5px; }
+.ac-page .ac-signout { justify-self: start; }
+.ac-empty { display: grid; justify-items: center; gap: 10px; padding: 48px 0; text-align: center; }
+.ac-empty h1 { font-size: 26px; }
+.ac-empty p { color: var(--ip-text); max-width: 420px; }
+.ac-actions { display: grid; gap: 10px; width: 100%; max-width: 320px; margin-top: 8px; }
+@media (min-width: 640px) {
+  .ac-body { max-width: 720px; }
+  .ac-card { padding: 22px; }
+}
+
+@keyframes ac-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ac-up { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes ac-pop { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .ac-backdrop, .ac-dialog, .ph-account-menu { animation: none; }
+}
