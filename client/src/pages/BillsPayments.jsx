@@ -476,6 +476,25 @@ function ConfirmStep({ quote, partPay, payAmount, setPayAmount }) {
 }
 
 // Step 3: how the customer pays (Paynow). Live payment is switched on with the Paynow keys.
+// Before paying: sign in (the payment and its token are kept in the account) or pay as a guest.
+function AccountChoice({ onGuest }) {
+  return (
+    <div className="bp-account-choice">
+      <p>
+        <strong>Keep a record of this payment.</strong> Sign in or create an account and this payment, its
+        receipt and any token stay in your account, on any phone or computer.
+      </p>
+      <button type="button" className="ip-btn" onClick={() => openAccount("signin")}>
+        Sign in or create an account
+      </button>
+      <button type="button" className="ip-btn ip-btn--ghost" onClick={onGuest}>
+        Continue as guest
+      </button>
+      <p className="bp-hint">As a guest, you see the receipt and token here only.</p>
+    </div>
+  );
+}
+
 function PayStep({ total, currency, method, setMethod, phone, setPhone, demo }) {
   const methods = [
     ["ecocash", "EcoCash", "📱", "Approve on your phone"],
@@ -608,6 +627,7 @@ export function BillCheckout({ code }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [asking, setAsking] = useState(false);
+  const [guest, setGuest] = useState(false);
   const top = useRef(null);
 
   useEffect(() => {
@@ -637,6 +657,12 @@ export function BillCheckout({ code }) {
     [biller, values]
   );
   const partPay = quote?.product?.authAmountMandated === false;
+  const choosing = step === 2 && !account && !guest; // sign in or guest, before paying
+
+  // signed in: their linked WhatsApp number is the usual mobile money number
+  useEffect(() => {
+    if (account?.phone && !phone) setPhone(account.phone.startsWith("263") ? `0${account.phone.slice(3)}` : account.phone);
+  }, [account, phone]);
   const total = partPay && payAmount ? Number(payAmount) : quote?.total;
 
   const submitDetails = async (e) => {
@@ -677,6 +703,7 @@ export function BillCheckout({ code }) {
     setError("");
     try {
       const qs = partPay && payAmount ? `?amount=${encodeURIComponent(payAmount)}` : "";
+      // sent with the sign-in (call adds it): a customer who signed in at this step owns the payment
       setResult(await call(`/demo/pay/${quote.reference}${qs}`, { method: "POST" }));
       setStep(3);
     } catch (err) {
@@ -716,7 +743,7 @@ export function BillCheckout({ code }) {
     } else if (step === 2) {
       summary = money(total, quote.currency);
       action = (
-        <button type="button" className="ip-btn" disabled={busy || !catalogue?.demo} onClick={pay}>
+        <button type="button" className="ip-btn" disabled={busy || choosing || !catalogue?.demo} onClick={pay}>
           {busy ? "Paying…" : `Pay ${money(total, quote.currency)}`}
         </button>
       );
@@ -765,14 +792,6 @@ export function BillCheckout({ code }) {
 
       <main className="bp-checkout-body">
         {catalogue?.demo && step === 0 && <p className="bp-demo">Demo mode: demo options and prices, no real payments.</p>}
-        {!account && step === 0 && biller && (
-          <p className="bp-signin-hint">
-            <button type="button" onClick={() => openAccount("signin")}>
-              Sign in
-            </button>{" "}
-            to keep a record of your payments and tokens in your account.
-          </p>
-        )}
         <Notice text={loadError} />
         {!catalogue && !loadError && <p className="ip-muted">Loading…</p>}
         {catalogue && !biller && (
@@ -787,7 +806,7 @@ export function BillCheckout({ code }) {
           <div className="bp-checkout-grid">
           <div className="bp-card bp-step-card" key={step}>
             <h2 className="bp-step-title">
-              {["Your details", "Confirm your details", "Payment", ""][step]}
+              {["Your details", "Confirm your details", choosing ? "Before you pay" : "Payment", ""][step]}
             </h2>
             <Notice text={error} />
             {step === 0 && (
@@ -804,7 +823,8 @@ export function BillCheckout({ code }) {
             {step === 1 && (
               <ConfirmStep quote={quote} partPay={partPay} payAmount={payAmount} setPayAmount={setPayAmount} />
             )}
-            {step === 2 && (
+            {choosing && <AccountChoice onGuest={() => setGuest(true)} />}
+            {step === 2 && !choosing && (
               <PayStep
                 total={total}
                 currency={quote.currency}

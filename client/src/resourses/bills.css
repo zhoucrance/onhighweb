@@ -213,3 +213,9 @@
   .bp-aside .bp-bar-actions .bp-back-btn { flex: 0 0 38%; }
   .bp-checkout-bar { display: none; }
 }
+
+/* ---- before paying: sign in or continue as guest ---- */
+.bp-account-choice { display: grid; gap: 10px; }
+.bp-account-choice > p:first-child { color: var(--ip-text); line-height: 1.6; }
+.bp-account-choice > p:first-child strong { display: block; color: var(--ip-ink); font-size: 16px; }
+.bp-account-choice .ip-btn { width: 100%; min-height: 52px; }

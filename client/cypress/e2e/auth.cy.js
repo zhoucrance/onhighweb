@@ -368,12 +368,12 @@ describe("Purchases linked to the account", () => {
     createAccount(newEmail(), { name: "E2E Bills" });
     visit("/bills/pay/ZETDC");
     cy.get(".bp-steps");
-    cy.get(".bp-signin-hint").should("not.exist");
     cy.get(".bp-field input").first().type("37132229735");
     cy.contains(".bp-quick button", "10").click();
     cy.get(".bp-checkout-bar .ip-btn").contains("Continue").click();
     cy.get(".bp-checkout-bar .ip-btn").contains("Continue to pay").click();
-    cy.get("input[type=tel]").type("0771234567");
+    cy.get(".bp-account-choice").should("not.exist"); // already signed in
+    cy.get("input[type=tel]").clear().type("0771234567");
     cy.get(".bp-checkout-bar .ip-btn").contains("Pay").click();
     cy.get(".bp-outcome h2").should("contain", "Payment successful");
     visit("/account");
@@ -382,9 +382,44 @@ describe("Purchases linked to the account", () => {
     cy.screenshot("auth-phone/8-my-payments", { capture: "viewport" });
   });
 
-  it("a guest sees a sign-in hint on bills", () => {
+  it("bills: signing in at the Pay step keeps the payment in the account", () => {
+    const email = newEmail();
     visit("/bills/pay/ZETDC");
-    cy.get(".bp-signin-hint").should("contain", "keep a record");
+    cy.get(".bp-field input").first().type("37132229735");
+    cy.contains(".bp-quick button", "5").click();
+    cy.get(".bp-checkout-bar .ip-btn").contains("Continue").click();
+    cy.get(".bp-checkout-bar .ip-btn").contains("Continue to pay").click();
+    cy.get(".bp-step-title").should("contain", "Before you pay");
+    cy.screenshot("auth-phone/9-bills-before-you-pay", { capture: "viewport" });
+    cy.contains(".bp-account-choice button", "Sign in or create an account").click();
+    // a new account, created and verified right here
+    dialog().contains("[role=tab]", "Create account").click();
+    dialog().find("input[name=name]").type("E2E Late Signer");
+    dialog().find("input[name=email]").type(email);
+    dialog().find("#ac-new-password").type(PASSWORD);
+    dialog().find(".ac-submit").click();
+    enterCode(email);
+    dialog().should("not.exist");
+    // still on the same payment, now signed in: straight to how to pay
+    cy.location("pathname").should("eq", "/bills/pay/ZETDC");
+    cy.get(".bp-account-choice").should("not.exist");
+    cy.get("input[type=tel]").type("0771234567");
+    cy.get(".bp-checkout-bar .ip-btn").contains("Pay").click();
+    cy.get(".bp-outcome h2").should("contain", "Payment successful");
+    visit("/account");
+    cy.contains(".ac-card", "My bill payments").should("contain", "ZESA Pre-paid Electricity").and("contain", "ZiG 5.00");
+  });
+
+  it("bills: a guest can still pay without an account", () => {
+    visit("/bills/pay/ZETDC");
+    cy.get(".bp-field input").first().type("37132229735");
+    cy.contains(".bp-quick button", "5").click();
+    cy.get(".bp-checkout-bar .ip-btn").contains("Continue").click();
+    cy.get(".bp-checkout-bar .ip-btn").contains("Continue to pay").click();
+    cy.contains(".bp-account-choice button", "Continue as guest").click();
+    cy.get("input[type=tel]").type("0771234567");
+    cy.get(".bp-checkout-bar .ip-btn").contains("Pay").click();
+    cy.get(".bp-outcome h2").should("contain", "Payment successful");
   });
 });
 

@@ -104,6 +104,10 @@ Object.entries(SIZES).forEach(([device, [width, height]]) => {
 
       cy.get(`${bar} .ip-btn`).contains("Continue to pay").click();
       cy.get(".bp-steps li.is-current").should("contain", "Pay");
+      // not signed in: sign in or continue as guest, before choosing how to pay
+      cy.get(".bp-account-choice").should("contain", "Keep a record of this payment");
+      cy.get(`${bar} .ip-btn`).contains("Pay ZiG 10.00").should("be.disabled");
+      cy.contains(".bp-account-choice button", "Continue as guest").click();
       cy.contains(".bp-method", "EcoCash").should("have.attr", "aria-checked", "true");
       cy.get(`${bar} .ip-btn`).contains("Pay ZiG 10.00").click();
       cy.get(".ip-notice").should("contain", "mobile money number");
