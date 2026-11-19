@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authHeader, openAccount, useAccount } from "../lib/account";
 import "../resourses/interview-practice.css";
@@ -476,6 +476,30 @@ function ConfirmStep({ quote, partPay, payAmount, setPayAmount }) {
 }
 
 // Step 3: how the customer pays (Paynow). Live payment is switched on with the Paynow keys.
+// EcoCash / OneMoney: the customer approves on their phone; we keep checking.
+function ApproveOnPhone({ waiting, onCheck, onCancel, busy }) {
+  return (
+    <div className="bp-approve" aria-live="polite">
+      <span className="bp-approve-icon" aria-hidden="true">
+        📲
+      </span>
+      <h3>Approve the payment on your phone</h3>
+      <p>
+        We sent a payment request to <strong>{waiting.phone}</strong>. Enter your PIN on your phone to approve
+        it. This page updates by itself.
+      </p>
+      {waiting.instructions && <p className="bp-hint">{waiting.instructions}</p>}
+      {waiting.note && <p className="bp-hint">{waiting.note}</p>}
+      <button type="button" className="ip-btn" disabled={busy} onClick={onCheck}>
+        {busy ? "Checking…" : "I have approved"}
+      </button>
+      <button type="button" className="ip-link" onClick={onCancel}>
+        Use another number or method
+      </button>
+    </div>
+  );
+}
+
 // Before paying: sign in (the payment and its token are kept in the account) or pay as a guest.
 function AccountChoice({ onGuest }) {
   return (
@@ -495,7 +519,7 @@ function AccountChoice({ onGuest }) {
   );
 }
 
-function PayStep({ total, currency, method, setMethod, phone, setPhone, demo }) {
+function PayStep({ total, currency, method, setMethod, phone, setPhone, payWith }) {
   const methods = [
     ["ecocash", "EcoCash", "📱", "Approve on your phone"],
     ["onemoney", "OneMoney", "📱", "Approve on your phone"],
@@ -536,9 +560,8 @@ function PayStep({ total, currency, method, setMethod, phone, setPhone, demo }) 
           <input type="tel" inputMode="tel" placeholder="0771234567" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </Field>
       )}
-      {demo ? (
-        <p className="bp-demo">Demo mode: no money is taken. Tap “Pay” to see the result.</p>
-      ) : (
+      {payWith === "demo" && <p className="bp-demo">Demo mode: no money is taken. Tap “Pay” to see the result.</p>}
+      {payWith === "none" && (
         <p className="bp-soon">🔒 Payments open soon. We are connecting Paynow. Nothing has been charged.</p>
       )}
       <p className="bp-hint">Payments are processed securely by Paynow.</p>
@@ -628,6 +651,7 @@ export function BillCheckout({ code }) {
   const [error, setError] = useState("");
   const [asking, setAsking] = useState(false);
   const [guest, setGuest] = useState(false);
+  const [waiting, setWaiting] = useState(null); // {reference, phone, instructions, note}
   const top = useRef(null);
 
   useEffect(() => {
@@ -693,19 +717,88 @@ export function BillCheckout({ code }) {
     }
   };
 
+  const payWith = catalogue?.payWith || (catalogue?.demo ? "demo" : "none");
+
+  // Has the customer paid? Once they have, the bill is paid and its result shown.
+  const checkPayment = useCallback(
+    async (reference) => {
+      try {
+        const r = await call(`/checkout/${encodeURIComponent(reference)}`);
+        if (r.state === "awaiting_payment") return false;
+        if (r.state === "not_paid") {
+          setWaiting(null);
+          setError(r.message || "The payment was cancelled or did not go through.");
+          return true;
+        }
+        setWaiting(null);
+        setResult(r);
+        setStep(3);
+        return true;
+      } catch (err) {
+        setError(err.message);
+        return false;
+      }
+    },
+    []
+  );
+
+  // keep checking every 5 seconds for about 3 minutes while the customer approves
+  useEffect(() => {
+    if (!waiting) return undefined;
+    let tries = 0;
+    const timer = window.setInterval(async () => {
+      tries += 1;
+      const done = await checkPayment(waiting.reference);
+      if (done) window.clearInterval(timer);
+      else if (tries >= 36) {
+        window.clearInterval(timer);
+        setWaiting((w) => w && { ...w, note: "Still waiting. If you approved, tap “I have approved”." });
+      }
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [waiting?.reference, checkPayment]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // back from Paynow's card page: /bills/pay/<code>?ref=<reference>
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (!ref) return;
+    window.history.replaceState({}, "", window.location.pathname);
+    setStep(2);
+    setWaiting({ reference: ref, phone: "your card", instructions: "", note: "Checking your card payment…" });
+    checkPayment(ref);
+  }, [checkPayment]);
+
   const pay = async () => {
     if (method !== "card" && !/^0?7\d{8}$/.test(phone.replace(/\D/g, "").replace(/^263/, "0"))) {
       setError("Enter the mobile money number you will pay with, e.g. 0771234567.");
       return;
     }
-    if (!catalogue?.demo) return; // live customer payment (Paynow) is switched on with the keys
+    if (payWith === "none") return;
     setBusy(true);
     setError("");
     try {
-      const qs = partPay && payAmount ? `?amount=${encodeURIComponent(payAmount)}` : "";
       // sent with the sign-in (call adds it): a customer who signed in at this step owns the payment
-      setResult(await call(`/demo/pay/${quote.reference}${qs}`, { method: "POST" }));
-      setStep(3);
+      if (payWith === "demo") {
+        const qs = partPay && payAmount ? `?amount=${encodeURIComponent(payAmount)}` : "";
+        setResult(await call(`/demo/pay/${quote.reference}${qs}`, { method: "POST" }));
+        setStep(3);
+        return;
+      }
+      const r = await call(`/checkout/${quote.reference}`, {
+        method: "POST",
+        body: {
+          method,
+          phone,
+          email: account?.email || "",
+          amount: partPay && payAmount ? payAmount : null,
+          returnUrl: `${window.location.origin}/bills/pay/${encodeURIComponent(code)}?ref=${quote.reference}`,
+        },
+      });
+      if (method === "card" && r.redirectUrl) {
+        window.location.assign(r.redirectUrl); // Paynow's secure card page, then back here
+        return;
+      }
+      setWaiting({ reference: quote.reference, phone, instructions: r.instructions || "" });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -741,10 +834,10 @@ export function BillCheckout({ code }) {
         </button>
       );
     } else if (step === 2) {
-      summary = money(total, quote.currency);
+      summary = quote ? money(total, quote.currency) : "Checking…";
       action = (
-        <button type="button" className="ip-btn" disabled={busy || choosing || !catalogue?.demo} onClick={pay}>
-          {busy ? "Paying…" : `Pay ${money(total, quote.currency)}`}
+        <button type="button" className="ip-btn" disabled={busy || choosing || Boolean(waiting) || payWith === "none"} onClick={pay}>
+          {busy ? "Paying…" : quote ? `Pay ${money(total, quote.currency)}` : "Pay"}
         </button>
       );
     } else {
@@ -824,7 +917,20 @@ export function BillCheckout({ code }) {
               <ConfirmStep quote={quote} partPay={partPay} payAmount={payAmount} setPayAmount={setPayAmount} />
             )}
             {choosing && <AccountChoice onGuest={() => setGuest(true)} />}
-            {step === 2 && !choosing && (
+            {step === 2 && waiting && (
+              <ApproveOnPhone
+                waiting={waiting}
+                busy={busy}
+                onCheck={async () => {
+                  setBusy(true);
+                  const done = await checkPayment(waiting.reference);
+                  if (!done) setWaiting((w) => w && { ...w, note: "We have not received your payment yet." });
+                  setBusy(false);
+                }}
+                onCancel={() => setWaiting(null)}
+              />
+            )}
+            {step === 2 && !choosing && !waiting && quote && (
               <PayStep
                 total={total}
                 currency={quote.currency}
@@ -832,7 +938,7 @@ export function BillCheckout({ code }) {
                 setMethod={setMethod}
                 phone={phone}
                 setPhone={setPhone}
-                demo={Boolean(catalogue?.demo)}
+                payWith={payWith}
               />
             )}
             {step === 3 && result && <DoneStep result={result} setResult={setResult} />}

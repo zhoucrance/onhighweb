@@ -219,3 +219,11 @@
 .bp-account-choice > p:first-child { color: var(--ip-text); line-height: 1.6; }
 .bp-account-choice > p:first-child strong { display: block; color: var(--ip-ink); font-size: 16px; }
 .bp-account-choice .ip-btn { width: 100%; min-height: 52px; }
+
+/* ---- approve the payment on your phone (EcoCash / OneMoney) ---- */
+.bp-approve { display: grid; justify-items: center; gap: 10px; padding: 8px 0; text-align: center; }
+.bp-approve-icon { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: var(--ip-primary-light); font-size: 34px; animation: ph-soon-bob 2.4s ease-in-out infinite; }
+.bp-approve h3 { font-size: 19px; }
+.bp-approve p { color: var(--ip-text); line-height: 1.6; }
+.bp-approve .ip-btn { width: 100%; min-height: 52px; }
+@media (prefers-reduced-motion: reduce) { .bp-approve-icon { animation: none; } }
