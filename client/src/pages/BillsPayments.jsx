@@ -519,7 +519,7 @@ function AccountChoice({ onGuest }) {
   );
 }
 
-function PayStep({ total, currency, method, setMethod, phone, setPhone, payWith }) {
+function PayStep({ total, currency, method, setMethod, phone, setPhone, smsTo, setSmsTo, payWith }) {
   const methods = [
     ["ecocash", "EcoCash", "📱", "Approve on your phone"],
     ["onemoney", "OneMoney", "📱", "Approve on your phone"],
@@ -556,8 +556,16 @@ function PayStep({ total, currency, method, setMethod, phone, setPhone, payWith 
         </div>
       </div>
       {method !== "card" && (
-        <Field label={`${method === "onemoney" ? "OneMoney" : "EcoCash"} number`} hint="You will approve the payment on this phone.">
+        <Field
+          label={`${method === "onemoney" ? "OneMoney" : "EcoCash"} number`}
+          hint="You will approve the payment on this phone. Your receipt SMS comes to this number too."
+        >
           <input type="tel" inputMode="tel" placeholder="0771234567" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        </Field>
+      )}
+      {method === "card" && (
+        <Field label="Mobile number for your receipt SMS" hint="Your receipt (and any token) is sent here by SMS.">
+          <input type="tel" name="smsTo" inputMode="tel" placeholder="0771234567" value={smsTo} onChange={(e) => setSmsTo(e.target.value)} />
         </Field>
       )}
       {payWith === "demo" && <p className="bp-demo">Demo mode: no money is taken. Tap “Pay” to see the result.</p>}
@@ -624,6 +632,9 @@ function DoneStep({ result, setResult }) {
           💬 {sms}
         </p>
       ))}
+      {result.smsTo && result.state === "delivered" && result.smses.length > 0 && (
+        <p className="bp-sms-sent">📩 Your receipt is on its way by SMS to {result.smsTo}.</p>
+      )}
       {result.billerReference && <p className="bp-hint">Reference: {result.billerReference}</p>}
       {result.state === "pending" && (
         <button type="button" className="ip-btn ip-btn--ghost" disabled={busy} onClick={refresh}>
@@ -646,6 +657,7 @@ export function BillCheckout({ code }) {
   const [payAmount, setPayAmount] = useState("");
   const [method, setMethod] = useState("ecocash");
   const [phone, setPhone] = useState("");
+  const [smsTo, setSmsTo] = useState(""); // card payers: where the receipt SMS goes
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -769,17 +781,25 @@ export function BillCheckout({ code }) {
   }, [checkPayment]);
 
   const pay = async () => {
-    if (method !== "card" && !/^0?7\d{8}$/.test(phone.replace(/\D/g, "").replace(/^263/, "0"))) {
+    const mobile = (n) => /^0?7\d{8}$/.test(String(n || "").replace(/\D/g, "").replace(/^263/, "0"));
+    if (method !== "card" && !mobile(phone)) {
       setError("Enter the mobile money number you will pay with, e.g. 0771234567.");
       return;
     }
+    if (method === "card" && !mobile(smsTo)) {
+      setError("Enter the mobile number for your receipt SMS, e.g. 0771234567.");
+      return;
+    }
+    const receiptTo = method === "card" ? smsTo : phone;
     if (payWith === "none") return;
     setBusy(true);
     setError("");
     try {
       // sent with the sign-in (call adds it): a customer who signed in at this step owns the payment
       if (payWith === "demo") {
-        const qs = partPay && payAmount ? `?amount=${encodeURIComponent(payAmount)}` : "";
+        const qs = `?smsTo=${encodeURIComponent(receiptTo)}${
+          partPay && payAmount ? `&amount=${encodeURIComponent(payAmount)}` : ""
+        }`;
         setResult(await call(`/demo/pay/${quote.reference}${qs}`, { method: "POST" }));
         setStep(3);
         return;
@@ -789,6 +809,7 @@ export function BillCheckout({ code }) {
         body: {
           method,
           phone,
+          smsTo: receiptTo,
           email: account?.email || "",
           amount: partPay && payAmount ? payAmount : null,
           returnUrl: `${window.location.origin}/bills/pay/${encodeURIComponent(code)}?ref=${quote.reference}`,
@@ -938,6 +959,8 @@ export function BillCheckout({ code }) {
                 setMethod={setMethod}
                 phone={phone}
                 setPhone={setPhone}
+                smsTo={smsTo}
+                setSmsTo={setSmsTo}
                 payWith={payWith}
               />
             )}

@@ -52,6 +52,7 @@ describe("Bills paid with Paynow", () => {
     cy.wait("@start").its("request.body").should((body) => {
       expect(body.method).to.eq("ecocash");
       expect(body.phone).to.eq("0771234567");
+      expect(body.smsTo).to.eq("0771234567"); // the receipt SMS goes to the paying number
       expect(body.returnUrl).to.match(/\/bills\/pay\/ZETDC\?ref=/);
     });
     cy.get(".bp-approve").should("contain", "Approve the payment on your phone").and("contain", "0771234567");
@@ -116,7 +117,13 @@ describe("Bills paid with Paynow", () => {
     toPayStep();
     cy.contains(".bp-method", "Visa / Mastercard").click();
     cy.get(".bp-checkout-bar .ip-btn").contains("Pay").click();
-    cy.wait("@start").its("request.body.method").should("eq", "card");
+    cy.get(".ip-notice").should("contain", "receipt SMS"); // a number for the receipt is needed
+    cy.get("input[name=smsTo]").type("0712345678");
+    cy.get(".bp-checkout-bar .ip-btn").contains("Pay").click();
+    cy.wait("@start").its("request.body").should((body) => {
+      expect(body.method).to.eq("card");
+      expect(body.smsTo).to.eq("0712345678");
+    });
     // (here the stand-in "Paynow page" sends the customer straight back)
     cy.wait("@back");
     cy.location("search").should("eq", ""); // the ref is tidied from the address

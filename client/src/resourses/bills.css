@@ -227,3 +227,6 @@
 .bp-approve p { color: var(--ip-text); line-height: 1.6; }
 .bp-approve .ip-btn { width: 100%; min-height: 52px; }
 @media (prefers-reduced-motion: reduce) { .bp-approve-icon { animation: none; } }
+
+/* ---- receipt SMS note on the Done screen ---- */
+.bp-sms-sent { padding: 10px 12px; border-radius: 12px; background: var(--ip-primary-light); color: var(--ip-primary-dark); font-weight: 600; line-height: 1.5; }

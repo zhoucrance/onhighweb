@@ -117,6 +117,7 @@ Object.entries(SIZES).forEach(([device, [width, height]]) => {
 
       cy.get(".bp-outcome h2").should("contain", "Payment successful");
       cy.get(".bp-voucher strong").should("not.be.empty");
+      cy.get(".bp-sms-sent").should("contain", "0771234567"); // receipt SMS to the paying number
       cy.get(".bp-steps li.is-done").should("have.length", 3);
       cy.get(".bp-head-btn").should("not.exist"); // finished: leave with Done
       cy.wait(500);
