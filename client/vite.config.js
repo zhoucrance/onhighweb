@@ -12,8 +12,20 @@ const jsAsJsx = {
   },
 };
 
+// Local development: /privacy-policy (and /privacy) show the plain privacy page,
+// as server.js does in production.
+const privacyPage = {
+  name: "privacy-policy-page",
+  configureServer(server) {
+    server.middlewares.use((req, _res, next) => {
+      if (/^\/privacy(-policy)?\/?(\?.*)?$/.test(req.url || "")) req.url = "/privacy-policy.html";
+      next();
+    });
+  },
+};
+
 module.exports = defineConfig({
-  plugins: [jsAsJsx, react()],
+  plugins: [privacyPage, jsAsJsx, react()],
   esbuild: {
     loader: "jsx",
     include: /src\/.*\.[jt]sx?$/,

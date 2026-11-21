@@ -34,12 +34,18 @@ if(process.env.NODE_ENV === "production")
     const clientBuildPath = path.resolve(__dirname, "client", "build");
     const clientStaticPath = require("fs").existsSync(clientDistPath) ? clientDistPath : clientBuildPath;
 
+    // Public privacy policy (plain HTML, no login, readable by Meta's reviewers and crawlers).
+    app.get(["/privacy-policy", "/privacy-policy/", "/privacy"], (req, res) => {
+        res.setHeader("Cache-Control", "no-cache");
+        res.sendFile(path.resolve(clientStaticPath, "privacy-policy.html"));
+    });
+
     app.use(
         express.static(clientStaticPath, {
             maxAge: "1y",
             immutable: true,
             setHeaders: (res, filePath) => {
-                if (path.basename(filePath) === "index.html") {
+                if (filePath.endsWith(".html")) { // pages always fresh (index, privacy policy)
                     res.setHeader("Cache-Control", "no-cache");
                 }
             },

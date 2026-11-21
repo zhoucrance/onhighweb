@@ -141,8 +141,9 @@ self.addEventListener("fetch", (event) => {
       event.respondWith(networkFirst(request));
       return;
     }
+    // (the privacy policy is a plain page of its own: always from the server)
     if (request.mode === "navigate" && !url.pathname.startsWith("/api/") &&
-        !url.pathname.startsWith("/careers-bot/")) {
+        !url.pathname.startsWith("/careers-bot/") && !url.pathname.startsWith("/privacy")) {
       event.respondWith(pageFromPhone(request, event));
       return;
     }

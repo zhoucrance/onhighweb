@@ -318,6 +318,15 @@ export default function AccountDialog() {
             </>
           )}
 
+          {mode === "signup" && (
+            <p className="ac-consent">
+              By creating an account you accept our{" "}
+              <a href="/privacy-policy" target="_blank" rel="noopener">
+                Privacy Policy
+              </a>
+              .
+            </p>
+          )}
           <button type="submit" className="ip-btn ac-submit" disabled={busy}>
             {busy ? "Please wait…" : BUTTONS[mode]}
           </button>

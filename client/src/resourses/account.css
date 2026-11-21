@@ -105,3 +105,9 @@
 .ac-form .ac-link-whatsapp { padding: 12px; border: 1px dashed var(--ip-border); border-radius: 14px; background: var(--ip-surface); }
 .ac-form .ac-link-whatsapp input { background: var(--ip-white); }
 .ac-lead strong { overflow-wrap: anywhere; }
+
+/* ---- site footer (privacy policy link) and sign-up consent line ---- */
+.ph-footer { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; padding: 20px 16px calc(24px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--ip-border); background: var(--ip-white); color: var(--ip-muted); font-size: 14px; }
+.ph-page .ph-footer a { color: var(--ip-primary-dark) !important; font-weight: 600; text-decoration: underline !important; text-underline-offset: 3px; }
+.ac-consent { color: var(--ip-muted); font-size: 13px; text-align: center; }
+.ac-consent a { color: var(--ip-primary-dark); font-weight: 700; }

@@ -228,6 +228,14 @@ export default function PublicHome() {
           <InterviewPractice key={`${pathname}-${homeVisit}`} />
         )}
       </Suspense>
+      {!checkout && (
+        <footer className="ph-footer">
+          <span>© {new Date().getFullYear()} OnHighTech Solutions</span>
+          {/* a plain page (not part of the app), so a normal link */}
+          <a href="/privacy-policy">Privacy Policy</a>
+          <a href={whatsappLink("interviews").replace(/\?text=.*/, "")}>Contact us on WhatsApp</a>
+        </footer>
+      )}
       <AccountDialog />
       </div>
     </div>
