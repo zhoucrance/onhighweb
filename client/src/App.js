@@ -14,6 +14,7 @@ const PublicHome = lazy(() => import("./pages/PublicHome"));
 const PublicRoute = lazy(() => import("./components/PublicRoute"));
 const ProtectedRoute = lazy(() => import("./components/ProtectedRoute"));
 const AdminHome = lazy(() => import("./pages/Admin/AdminHome"));
+const InterviewStats = lazy(() => import("./pages/Admin/InterviewStats"));
 const AdminBuses = lazy(() => import("./pages/Admin/AdminBuses"));
 const AdminUsers = lazy(() => import("./pages/Admin/AdminUsers"));
 const BookNow = lazy(() => import("./pages/BookNow"));
@@ -82,6 +83,17 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+          <Route
+            path="/statistics-interviews"
+            element={
+              <ProtectedRoute>
+                <PermissionRoute superAdminOnly>
+                  <InterviewStats />
+                </PermissionRoute>
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/admin/dashboard"

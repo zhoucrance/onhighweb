@@ -101,6 +101,12 @@ function DefaultLayout({ children }) {
       permission: "seats",
     },
     {
+      name: "Interview stats",
+      path: "/statistics-interviews",
+      icon: "ri-bar-chart-2-line",
+      superAdminOnly: true,
+    },
+    {
       name: "Help Desk",
       path: "/admin/help-desk",
       icon: "ri-customer-service-2-line",

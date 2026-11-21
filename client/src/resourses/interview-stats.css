@@ -1,0 +1,63 @@
+/* Interview statistics (super admins). Mobile first: cards and a table that
+   turns into one card per person on phones. */
+.is-page { --is-ink: #071b3d; --is-text: #42506a; --is-muted: #6b7a90; --is-border: #dbe8ef;
+  --is-surface: #f3f8fb; --is-primary: #128fca; color: var(--is-ink); padding: 4px 0 32px; }
+.is-page * { box-sizing: border-box; }
+.is-head { display: grid; gap: 12px; margin-bottom: 14px; }
+.is-head h1 { margin: 0; font-size: 22px; }
+.is-head p { margin: 4px 0 0; color: var(--is-muted); }
+.is-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.is-page .is-btn { min-height: 44px; padding: 0 16px; border: 1px solid var(--is-primary); border-radius: 10px !important; background: var(--is-primary); color: #fff; font-weight: 700; cursor: pointer; }
+.is-page .is-btn:disabled { opacity: .6; cursor: wait; }
+.is-page .is-btn--ghost { background: #fff; color: var(--is-primary); }
+.is-error { padding: 10px 12px; border-radius: 10px; background: #fff4f2; color: #a1321f; }
+.is-muted { color: var(--is-muted); }
+
+.is-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.is-card { display: grid; gap: 2px; padding: 14px; border: 1px solid var(--is-border); border-radius: 14px; background: #fff; }
+.is-card span { color: var(--is-muted); font-size: 13px; }
+.is-card strong { font-size: 28px; line-height: 1.1; }
+.is-card small { color: var(--is-muted); font-size: 12px; }
+.is-card--good strong { color: #138a40; }
+.is-card--warn strong { color: #b45309; }
+.is-card--hot { border-color: #f5b4a4; background: #fff8f6; }
+.is-card--hot strong { color: #c2410c; }
+
+.is-followups { margin: 12px 0; padding: 10px 12px; border-radius: 10px; background: #fff8e6; color: #7a5300; font-size: 14px; line-height: 1.5; }
+.is-followups.is-on { background: #e7f8ee; color: #135c34; }
+
+.is-stages { display: grid; gap: 8px; margin: 8px 0 16px; padding: 14px; border: 1px solid var(--is-border); border-radius: 14px; background: #fff; }
+.is-stages div { display: grid; grid-template-columns: 1fr 40px; grid-template-rows: auto 8px; column-gap: 8px; align-items: center; font-size: 13px; }
+.is-stages span { color: var(--is-text); }
+.is-stages b { grid-row: 1; grid-column: 2; text-align: right; }
+.is-stages i { grid-column: 1 / -1; height: 8px; min-width: 2px; border-radius: 99px; background: var(--is-primary); }
+
+.is-tools { display: grid; gap: 10px; margin-bottom: 12px; }
+.is-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.is-page .is-chips button { min-height: 40px; padding: 0 14px; border: 1px solid var(--is-border); border-radius: 999px !important; background: #fff; color: var(--is-text); font-weight: 600; cursor: pointer; }
+.is-page .is-chips button.is-active { background: var(--is-ink); border-color: var(--is-ink); color: #fff; }
+.is-chips em { font-style: normal; margin-left: 4px; opacity: .75; }
+.is-tools input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--is-border); border-radius: 10px; font-size: 16px; }
+
+/* phones: one card per person */
+.is-table { display: grid; gap: 10px; }
+.is-row { display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--is-border); border-radius: 14px; background: #fff; }
+.is-row span { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; overflow-wrap: anywhere; }
+.is-row span::before { content: attr(data-label); color: var(--is-muted); font-weight: 600; }
+.is-row--head { display: none; }
+.is-row a { color: var(--is-primary); font-weight: 700; }
+.is-tag { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--is-surface); font-size: 12px; font-weight: 700; }
+.is-tag--paid { background: #e7f8ee; color: #138a40; }
+.is-tag--reached_unlock, .is-tag--payment_started { background: #fff1ec; color: #c2410c; }
+
+@media (min-width: 900px) {
+  .is-head { grid-template-columns: 1fr auto; align-items: end; }
+  .is-cards { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .is-tools { grid-template-columns: 1fr 320px; align-items: center; }
+  /* computers: a real table */
+  .is-table { gap: 0; border: 1px solid var(--is-border); border-radius: 14px; overflow: hidden; background: #fff; }
+  .is-row { grid-template-columns: 1.1fr 1.1fr 1.4fr 1.4fr 1.2fr .7fr; gap: 12px; border: 0; border-top: 1px solid var(--is-border); border-radius: 0; padding: 10px 14px; align-items: center; }
+  .is-row span { display: block; }
+  .is-row span::before { content: none; }
+  .is-row--head { display: grid; border-top: 0; background: var(--is-surface); color: var(--is-muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+}
