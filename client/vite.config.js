@@ -12,13 +12,19 @@ const jsAsJsx = {
   },
 };
 
-// Local development: /privacy-policy (and /privacy) show the plain privacy page,
-// as server.js does in production.
+// Local development: the plain legal pages (privacy, terms, data deletion), as
+// server.js serves them in production.
+const LEGAL = [
+  [/^\/privacy(-policy)?\/?(\?.*)?$/, "/privacy-policy.html"],
+  [/^\/terms(-of-service)?\/?(\?.*)?$/, "/terms-of-service.html"],
+  [/^\/(data-deletion|delete-data|delete-my-data)\/?(\?.*)?$/, "/data-deletion.html"],
+];
 const privacyPage = {
-  name: "privacy-policy-page",
+  name: "legal-pages",
   configureServer(server) {
     server.middlewares.use((req, _res, next) => {
-      if (/^\/privacy(-policy)?\/?(\?.*)?$/.test(req.url || "")) req.url = "/privacy-policy.html";
+      const hit = LEGAL.find(([pattern]) => pattern.test(req.url || ""));
+      if (hit) req.url = hit[1];
       next();
     });
   },

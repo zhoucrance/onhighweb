@@ -321,6 +321,10 @@ export default function AccountDialog() {
           {mode === "signup" && (
             <p className="ac-consent">
               By creating an account you accept our{" "}
+              <a href="/terms-of-service" target="_blank" rel="noopener">
+                Terms of Service
+              </a>{" "}
+              and{" "}
               <a href="/privacy-policy" target="_blank" rel="noopener">
                 Privacy Policy
               </a>

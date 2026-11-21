@@ -34,10 +34,17 @@ if(process.env.NODE_ENV === "production")
     const clientBuildPath = path.resolve(__dirname, "client", "build");
     const clientStaticPath = require("fs").existsSync(clientDistPath) ? clientDistPath : clientBuildPath;
 
-    // Public privacy policy (plain HTML, no login, readable by Meta's reviewers and crawlers).
-    app.get(["/privacy-policy", "/privacy-policy/", "/privacy"], (req, res) => {
-        res.setHeader("Cache-Control", "no-cache");
-        res.sendFile(path.resolve(clientStaticPath, "privacy-policy.html"));
+    // Public legal pages (plain HTML, no login, readable by Meta's reviewers and crawlers).
+    const legalPages = {
+        "privacy-policy.html": ["/privacy-policy", "/privacy-policy/", "/privacy"],
+        "terms-of-service.html": ["/terms-of-service", "/terms-of-service/", "/terms"],
+        "data-deletion.html": ["/data-deletion", "/data-deletion/", "/delete-data", "/delete-my-data"],
+    };
+    Object.entries(legalPages).forEach(([file, urls]) => {
+        app.get(urls, (req, res) => {
+            res.setHeader("Cache-Control", "no-cache");
+            res.sendFile(path.resolve(clientStaticPath, file));
+        });
     });
 
     app.use(

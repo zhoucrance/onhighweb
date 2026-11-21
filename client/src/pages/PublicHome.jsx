@@ -233,6 +233,8 @@ export default function PublicHome() {
           <span>© {new Date().getFullYear()} OnHighTech Solutions</span>
           {/* a plain page (not part of the app), so a normal link */}
           <a href="/privacy-policy">Privacy Policy</a>
+          <a href="/terms-of-service">Terms of Service</a>
+          <a href="/data-deletion">Delete your data</a>
           <a href={whatsappLink("interviews").replace(/\?text=.*/, "")}>Contact us on WhatsApp</a>
         </footer>
       )}

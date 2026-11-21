@@ -141,9 +141,10 @@ self.addEventListener("fetch", (event) => {
       event.respondWith(networkFirst(request));
       return;
     }
-    // (the privacy policy is a plain page of its own: always from the server)
+    // (legal pages are plain pages of their own: always from the server)
+    const legal = /^\/(privacy|terms|data-deletion|delete-data|delete-my-data)/.test(url.pathname);
     if (request.mode === "navigate" && !url.pathname.startsWith("/api/") &&
-        !url.pathname.startsWith("/careers-bot/") && !url.pathname.startsWith("/privacy")) {
+        !url.pathname.startsWith("/careers-bot/") && !legal) {
       event.respondWith(pageFromPhone(request, event));
       return;
     }

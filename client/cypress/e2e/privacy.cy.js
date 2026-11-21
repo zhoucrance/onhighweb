@@ -63,6 +63,6 @@ describe("Privacy policy", () => {
     cy.get(".ph-account").click();
     cy.get(".ac-dialog").contains("[role=tab]", "Create account").click();
     cy.get(".ac-consent").should("contain", "By creating an account you accept our");
-    cy.get(".ac-consent a").should("have.attr", "href", "/privacy-policy").and("have.attr", "target", "_blank");
+    cy.get(".ac-consent a[href='/privacy-policy']").should("contain", "Privacy Policy").and("have.attr", "target", "_blank");
   });
 });
