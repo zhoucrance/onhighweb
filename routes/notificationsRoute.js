@@ -234,7 +234,7 @@ router.post("/interview-payment", async (req, res) => {
       payment.method === "ecocash" ? "EcoCash" : payment.method === "card" ? "card" : "",
     ].filter(Boolean);
     const message =
-      `💰 Interview payment: ${money(payment.amount, payment.currency)} via ${where}` +
+      `💰 ${/^tailored cv/i.test(payment.topic || "") ? "CV payment" : "Interview payment"}: ${money(payment.amount, payment.currency)} via ${where}` +
       `${payment.topic ? ` for ${payment.topic}` : ""} · ${details.join(" · ")}. ` +
       `Total so far: ${money(totals.total, payment.currency)} ` +
       `(${totals.count} ${totals.count === 1 ? "payment" : "payments"}).`;
@@ -251,6 +251,55 @@ router.post("/interview-payment", async (req, res) => {
       message,
     });
     res.send({ success: true, message: "Recorded", total: totals.total, count: totals.count });
+  } catch (error) {
+    res.status(500).send({ success: false, message: error.message });
+  }
+});
+
+// ---- Careers bot events (owner rule 2026-11-23) ----
+// POST /api/notifications/bot-event, header X-Interview-Secret (same secret).
+// { kind, message, key }: AI errors (balance used up, key rejected, outages), CVs
+// that could not be tailored or delivered, failed payments, free CVs given, CVs
+// delivered. Shown to super admins; the same kind + key within 30 minutes is
+// recorded once (the bot and its worker may both report one outage).
+const BOT_EVENTS = {
+  ai_error: { label: "⚠️ AI service", action: "ai_error" },
+  tailoring_failed: { label: "⚠️ CV not tailored", action: "tailoring_failed" },
+  cv_failed: { label: "🚨 CV not delivered", action: "cv_failed" },
+  payment_failed: { label: "⚠️ Payment failed", action: "payment_failed" },
+  cv_free: { label: "🎁 Free CV", action: "cv_free" },
+  cv_delivered: { label: "✅ CV delivered", action: "cv_delivered" },
+  other: { label: "ℹ️ Careers bot", action: "other" },
+};
+const REPEAT_MINUTES = 30;
+
+router.post("/bot-event", async (req, res) => {
+  try {
+    if (!sameSecret(req.get("X-Interview-Secret"))) {
+      return res.status(401).send({ success: false, message: "Not allowed" });
+    }
+    const body = req.body || {};
+    const kind = BOT_EVENTS[body.kind] ? body.kind : "other";
+    const text = String(body.message || "").trim().slice(0, 600);
+    if (!text) {
+      return res.status(400).send({ success: false, message: "message is required" });
+    }
+    const label = `${kind} -> ${String(body.key || kind).slice(0, 120)}`;
+    const since = new Date(Date.now() - REPEAT_MINUTES * 60 * 1000);
+    if (await Notification.exists({ module: "careers bot", entityLabel: label, createdAt: { $gte: since } })) {
+      return res.send({ success: true, message: "Already recorded" });
+    }
+    await Notification.create({
+      companyId: null, // OnHighTech's own service: shown to super admins
+      actor: null,
+      actorName: "Careers bot",
+      module: "careers bot",
+      action: BOT_EVENTS[kind].action,
+      entityType: "careers bot",
+      entityLabel: label,
+      message: `${BOT_EVENTS[kind].label}: ${text}`,
+    });
+    res.send({ success: true, message: "Recorded" });
   } catch (error) {
     res.status(500).send({ success: false, message: error.message });
   }
